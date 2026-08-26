@@ -1,5 +1,7 @@
 # Human Groove Engine
 
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/wave07wave/human-groove-engine)
+
 Human Groove Engine is a working rhythm generator built around stable pulse, controlled prediction
 violations and recovery. It generates four deterministic candidates, measures the resulting groove DNA,
 estimates a virtual listener response, previews the canonical timing in the browser and exports Type 1
