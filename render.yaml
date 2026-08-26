@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: human-groove-engine
+    env: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    disk:
+      name: groove-data
+      mountPath: /data
+      sizeGB: 1

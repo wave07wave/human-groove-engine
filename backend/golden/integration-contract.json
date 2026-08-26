@@ -1,0 +1,43 @@
+{
+  "schema_version": "1.0",
+  "ppq": 960,
+  "integration_modes": ["follow", "negotiate", "co_create"],
+  "groove_context": {
+    "tempo_map": {
+      "segments": [
+        { "start_tick": 0, "bpm": 104.0 }
+      ]
+    },
+    "meter": {
+      "numerator": 4,
+      "denominator": 4,
+      "grouping": [2, 2],
+      "subdivisions_per_quarter": 4
+    },
+    "phrase_boundaries": [0, 15360],
+    "beat_map": [1.0, 0.5, 0.75, 0.5],
+    "metric_gravity": [1.0, 0.25, 0.5, 0.25],
+    "tension_curve": [0.22, 0.41333333333333333, 0.6066666666666667, 0.8],
+    "kick_events": [
+      {
+        "grid_tick": 0,
+        "structural_offset_tick": 0,
+        "micro_offset_us": 0,
+        "velocity": 108
+      }
+    ],
+    "groove_dna": {
+      "pulse_stability": 0.75,
+      "syncopation": 0.45
+    }
+  },
+  "required_joint_result_fields": [
+    "groove_pattern",
+    "bass_pattern",
+    "interaction",
+    "joint_fitness",
+    "change_cost",
+    "complexity_fit",
+    "changes"
+  ]
+}

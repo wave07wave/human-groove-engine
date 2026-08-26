@@ -1,0 +1,10 @@
+.DS_Store
+.venv/
+.venv312/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+backend/human_groove.db
+frontend/node_modules/
+frontend/dist/
