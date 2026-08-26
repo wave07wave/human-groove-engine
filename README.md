@@ -48,13 +48,14 @@ Then open `http://127.0.0.1:5173`. The API and interactive OpenAPI schema are av
 
 `Dockerfile` packages the React workspace and FastAPI API as one Web service. This keeps the browser
 and API on the same origin, so the same HTTPS URL works on Macs, iPhones and iPads without an API URL
-or CORS setting in the client. `render.yaml` declares a persistent `/data` disk for the SQLite Pattern,
-Preset and preference data.
+or CORS setting in the client. `render.yaml` selects Render's free Web Service plan. The free plan uses
+an ephemeral SQLite database, so saved Patterns, Presets and preference history can reset whenever the
+service restarts or redeploys; exported JSON and MIDI files remain available on the user's device.
 
 To publish, connect this repository to a Docker-compatible host that supports `render.yaml` blueprints
-or build the root `Dockerfile`. Set `HGE_DATABASE_PATH` to a durable volume path when the host does not
-apply `render.yaml`; the default container value is `/data/human_groove.db`. The host must route its
-public `PORT` to the container. After deployment, open the service URL on any device.
+or build the root `Dockerfile`. For durable server-side history, upgrade to storage that survives
+restarts and set `HGE_DATABASE_PATH` to that mounted volume. The host must route its public `PORT` to
+the container. After deployment, open the service URL on any device.
 
 ## Validation
 

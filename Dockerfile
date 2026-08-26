@@ -15,6 +15,6 @@ COPY backend/app ./app
 COPY --from=frontend-build /workspace/frontend/dist /app/frontend-dist
 
 ENV HGE_WEB_DIST_DIR=/app/frontend-dist
-ENV HGE_DATABASE_PATH=/data/human_groove.db
+ENV HGE_DATABASE_PATH=/tmp/human_groove.db
 EXPOSE 8000
 CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
