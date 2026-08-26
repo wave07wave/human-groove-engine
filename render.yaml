@@ -1,8 +1,12 @@
 services:
   - type: web
-    name: human-groove-engine
+    name: human-groove-engine-wave07wave
     runtime: docker
     plan: free
+    region: singapore
+    repo: https://github.com/wave07wave/human-groove-engine
+    branch: main
+    autoDeployTrigger: commit
     dockerfilePath: ./Dockerfile
     dockerContext: .
     healthCheckPath: /health
