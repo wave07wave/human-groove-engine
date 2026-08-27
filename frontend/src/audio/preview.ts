@@ -1,4 +1,5 @@
 import * as Tone from 'tone'
+import { prepareAudioOutput } from './audioOutput'
 import type { GrooveEvent, GroovePattern, Instrument } from '../types/generated'
 import { claimPreview, releasePreview } from './previewCoordinator'
 
@@ -20,7 +21,7 @@ export async function togglePreview(pattern: GroovePattern, onState: (value: boo
   const stop = () => { Tone.getTransport().stop(); Tone.getTransport().cancel(); disposeInstruments(); releasePreview('groove'); playing = false; onState(false) }
   if (playing) { stop(); return }
   claimPreview('groove', stop)
-  await Tone.start()
+  try { await prepareAudioOutput() } catch (cause) { releasePreview('groove'); throw cause }
   disposeInstruments()
   instruments = {
     kick: new Tone.MembraneSynth({ pitchDecay: .04, octaves: 7 }).toDestination(),

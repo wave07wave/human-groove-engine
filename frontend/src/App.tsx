@@ -58,7 +58,7 @@ function GrooveApp({ onPatternChange, externalPattern }: { onPatternChange?: (pa
           <label>STYLE<select value={preset} onChange={e=>choosePreset(e.target.value)}>{Object.keys(presets?.built_in??{Balanced:1}).map(x=><option key={x}>{x}</option>)}</select></label>
         </div>
         <div className="knob-row">{controlMap.map(([label,key])=><Knob key={key} label={label} value={intent.target_dna[key]} onChange={value=>setDNA(key,value)}/>)}</div>
-        <div className="primary-actions"><button className="generate" disabled={busy} onClick={generate}>{busy?'CALCULATING…':'GENERATE'}</button><button disabled={!pattern} className={playing?'play active':'play'} onClick={()=>pattern&&togglePreview(pattern,setPlaying)}>{playing?'■ STOP':'▶ PLAY'}</button><button disabled={!pattern||busy} className="secondary" onClick={regenerate}>↻ REGENERATE SELECTED</button><button disabled={!pattern} className="secondary" onClick={()=>pattern&&api.midi(pattern)}>↓ MIDI</button></div>
+        <div className="primary-actions"><button className="generate" disabled={busy} onClick={generate}>{busy?'CALCULATING…':'GENERATE'}</button><button disabled={!pattern} className={playing?'play active':'play'} onClick={()=>{ if (pattern) void togglePreview(pattern,setPlaying).catch(cause=>setError(`音声を開始できません: ${String(cause)}`)) }}>{playing?'■ STOP':'▶ PLAY'}</button><button disabled={!pattern||busy} className="secondary" onClick={regenerate}>↻ REGENERATE SELECTED</button><button disabled={!pattern} className="secondary" onClick={()=>pattern&&api.midi(pattern)}>↓ MIDI</button></div>
         {error&&<p className="error">{error}</p>}
       </section>
       {candidates.length>0&&<section className="candidates">{candidates.map((item,index)=><button className={pattern?.pattern_id===item.pattern_id?'candidate active':'candidate'} key={item.pattern_id} onClick={()=>selectCandidate(item)}><b>{String.fromCharCode(65+index)}</b><span>{Math.round((item.analysis?.listener.predicted_groove??0)*100)} groove</span><small>{item.events.length} events</small></button>)}<div className="ab-choice"><span>Which moves you?</span><button disabled={candidates.length<2} onClick={()=>api.prefer(candidates[0],candidates[1],'A')}>A</button><button disabled={candidates.length<2} onClick={()=>api.prefer(candidates[0],candidates[1],'B')}>B</button></div></section>}
@@ -74,12 +74,13 @@ export default function App() {
   const [sharedGroove, setSharedGroove] = useState<GroovePattern | null>(null)
   const [sharedBass, setSharedBass] = useState<BassPattern | null>(null)
   const [mixPlaying, setMixPlaying] = useState(false)
+  const [mixError, setMixError] = useState('')
   return <>
     <nav className="engine-switch" aria-label="Workspace selection">
       <div className="mode-switch" aria-label="Mode selection"><button className={mode === 'easy' ? 'active' : ''} onClick={() => setMode('easy')}>EASY</button><button className={mode === 'detail' ? 'active' : ''} onClick={() => setMode('detail')}>DETAIL</button></div>
       {mode === 'detail' && <div className="engine-tabs"><button className={engine === 'groove' ? 'active' : ''} onClick={() => setEngine('groove')}>GROOVE</button><button className={engine === 'bass' ? 'active' : ''} onClick={() => setEngine('bass')}>BASS</button></div>}
     </nav>
-    {sharedGroove && sharedBass && <aside className="mix-transport" aria-label="Full mix transport"><span>FULL MIX · GROOVE + BASS</span><button className={mixPlaying ? 'play active' : 'play'} onClick={() => toggleMixPreview(sharedGroove, sharedBass, setMixPlaying)}>{mixPlaying ? '■ STOP' : '▶ PLAY'}</button></aside>}
+    {sharedGroove && sharedBass && <aside className="mix-transport" aria-label="Full mix transport"><span>FULL MIX · GROOVE + BASS</span><button className={mixPlaying ? 'play active' : 'play'} onClick={() => { setMixError(''); void toggleMixPreview(sharedGroove, sharedBass, setMixPlaying).catch(cause => setMixError(`音声を開始できません: ${String(cause)}`)) }}>{mixPlaying ? '■ STOP' : '▶ PLAY'}</button>{mixError && <small role="alert">{mixError}</small>}</aside>}
     {mode === 'easy' ? <QuickComposer groove={sharedGroove} bass={sharedBass} onReady={(groove, bass) => { setSharedGroove(groove); setSharedBass(bass) }} onOpenDetails={() => setMode('detail')} /> : <>
       <div hidden={engine !== 'groove'}><GrooveApp onPatternChange={setSharedGroove} externalPattern={sharedGroove} /></div>
       <div hidden={engine !== 'bass'}><BassApp groovePattern={sharedGroove} onGrooveUpdate={setSharedGroove} onBassPatternChange={setSharedBass} /></div>

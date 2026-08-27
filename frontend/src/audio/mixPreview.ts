@@ -1,4 +1,5 @@
 import * as Tone from 'tone'
+import { prepareAudioOutput } from './audioOutput'
 import type { BassPattern, GroovePattern, Instrument } from '../types/generated'
 import { claimPreview, releasePreview } from './previewCoordinator'
 
@@ -41,7 +42,7 @@ export async function toggleMixPreview(
 ) {
   if (playing) { stop(onState); return }
   claimPreview('mix', () => stop(onState))
-  await Tone.start()
+  try { await prepareAudioOutput() } catch (cause) { releasePreview('mix'); throw cause }
   dispose()
   drums = {
     kick: new Tone.MembraneSynth({ pitchDecay: .04, octaves: 7 }).toDestination(),

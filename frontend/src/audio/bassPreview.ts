@@ -1,4 +1,5 @@
 import * as Tone from 'tone'
+import { prepareAudioOutput } from './audioOutput'
 import type { BassPattern } from '../types/generated'
 import { claimPreview, releasePreview } from './previewCoordinator'
 
@@ -43,7 +44,8 @@ function articulationPerformance(event: BassPattern['events'][number], bpm: numb
 export async function toggleBassPreview(pattern: BassPattern, mode: BassPreviewMode, onState: (value: boolean) => void) {
   if (playing) { stop(onState); return }
   claimPreview('bass', () => stop(onState))
-  await Tone.start(); dispose()
+  try { await prepareAudioOutput() } catch (cause) { releasePreview('bass'); throw cause }
+  dispose()
   bassSynth = pattern.voice_policy === 'allow_overlap'
     ? new Tone.PolySynth(Tone.Synth, { oscillator: { type: 'triangle' }, envelope: { attack: .008, decay: .12, sustain: .48, release: .12 }, volume: -5 }).toDestination()
     : new Tone.MonoSynth({

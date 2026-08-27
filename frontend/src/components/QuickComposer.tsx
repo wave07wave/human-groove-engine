@@ -75,7 +75,7 @@ export function QuickComposer({ groove, bass, onReady, onOpenDetails }: Props) {
     {error && <p className="error">{error}</p>}
     <div className="quick-actions" aria-label="Easy mode actions">
       <button className="generate" disabled={busy || !groovePresets || !bassPresets} onClick={generateSong}>{busy ? 'BUILDING…' : 'GENERATE ALL'}</button>
-      <button className={playing ? 'play active' : 'play'} disabled={!groove || !bass} onClick={() => groove && bass && toggleMixPreview(groove, bass, setPlaying)}>{playing ? '■ STOP MIX' : '▶ PLAY FULL MIX'}</button>
+      <button className={playing ? 'play active' : 'play'} disabled={!groove || !bass} onClick={() => { if (groove && bass) void toggleMixPreview(groove, bass, setPlaying).catch(cause => setError(`音声を開始できません: ${String(cause)}`)) }}>{playing ? '■ STOP MIX' : '▶ PLAY FULL MIX'}</button>
     </div>
   </main>
 }
