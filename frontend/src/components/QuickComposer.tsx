@@ -18,6 +18,7 @@ export function QuickComposer({ groove, bass, onReady, onOpenDetails }: Props) {
   const [bassRole, setBassRole] = useState('Supportive')
   const [bpm, setBpm] = useState(100)
   const [bars, setBars] = useState(4)
+  const [seed, setSeed] = useState(42)
   const [busy, setBusy] = useState(false)
   const [playing, setPlaying] = useState(false)
   const [error, setError] = useState('')
@@ -34,15 +35,17 @@ export function QuickComposer({ groove, bass, onReady, onOpenDetails }: Props) {
     setBusy(true)
     setError('')
     try {
+      const nextSeed = seed >= 2_147_483_647 ? 0 : seed + 1
+      setSeed(nextSeed)
       const grooveResponse = await api.generate({
         bpm, bars, meter: METERS['4/4'], intent: grooveIntent, preset: style,
-        seed: 42, mode: 'preview', candidate_count: 1,
+        seed: nextSeed, mode: 'preview', candidate_count: 1,
       })
       const nextGroove = grooveResponse.candidates[0]
       const request: BassGenerateRequest = {
         bpm, bars, meter: METERS['4/4'], input_mode: 'chord_progression',
         harmony: 'Dm7 | G7 | Cmaj7 | A7', key: 'C', mode: 'major', intent: bassIntent,
-        preset: bassRole, seed: 42, candidate_count: 1,
+        preset: bassRole, seed: nextSeed, candidate_count: 1,
         register_limits: { lowest_midi_note: 28, highest_midi_note: 60, preferred_center: 42, preferred_zone: 'core', max_single_leap: 12 },
         voice_policy: 'monophonic_retrigger', groove_context: null,
       }

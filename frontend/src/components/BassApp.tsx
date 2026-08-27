@@ -86,9 +86,11 @@ export function BassApp({ groovePattern, onGrooveUpdate, onBassPatternChange }: 
   const choosePreset = (name: string) => { setPreset(name); const found = presets?.user[name] ?? presets?.built_in[name]; if (found) setIntent(structuredClone(found)) }
   const setDNA = (key: keyof BassIntentDNA, value: number) => setIntent(current => current ? { ...current, target: { ...current.target, [key]: value } } : current)
   const generate = async () => { if (!intent) return; setBusy(true); setError(''); setEvaluationStatus(''); try {
+    const nextSeed = seed >= 2_147_483_647 ? 0 : seed + 1
+    setSeed(nextSeed)
     const joint = integrationMode !== 'follow'
     if (joint && !groovePattern) throw new Error('NEGOTIATE / CO-CREATEにはGroove候補が必要です。')
-    const request: BassGenerateRequest = { bpm: joint ? groovePattern!.bpm : bpm, bars: joint ? groovePattern!.bars : bars, meter: joint ? groovePattern!.meter : METERS[meter], input_mode: inputMode, harmony, key: keyName || null, mode: scaleMode, intent, preset, seed, candidate_count: 4, register_limits: { lowest_midi_note: registerLow, highest_midi_note: registerHigh, preferred_center: registerCenter, preferred_zone: 'core', max_single_leap: maxLeap }, voice_policy: voicePolicy, groove_context: grooveContext }
+    const request: BassGenerateRequest = { bpm: joint ? groovePattern!.bpm : bpm, bars: joint ? groovePattern!.bars : bars, meter: joint ? groovePattern!.meter : METERS[meter], input_mode: inputMode, harmony, key: keyName || null, mode: scaleMode, intent, preset, seed: nextSeed, candidate_count: 4, register_limits: { lowest_midi_note: registerLow, highest_midi_note: registerHigh, preferred_center: registerCenter, preferred_zone: 'core', max_single_leap: maxLeap }, voice_policy: voicePolicy, groove_context: grooveContext }
     if (joint) {
       const response = await bassApi.jointGenerate(groovePattern!, request, integrationMode, complexityBudget, bassShare)
       const bassCandidates = response.candidates.map(candidate => candidate.bass_pattern)

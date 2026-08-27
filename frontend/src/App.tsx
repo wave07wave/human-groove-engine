@@ -30,7 +30,9 @@ function GrooveApp({ onPatternChange, externalPattern }: { onPatternChange?: (pa
   useEffect(() => { if (externalPattern && externalPattern.pattern_id !== pattern?.pattern_id) history.commit(externalPattern) }, [externalPattern, pattern?.pattern_id, history])
   useEffect(() => { api.presets().then(data => { setPresets(data); setIntent(data.built_in.Balanced) }).catch(() => setError('Backendに接続できません。起動手順を確認してください。')) }, [])
   const generate = async () => { setBusy(true); setError(''); try {
-    const request: GenerateRequest = { bpm,bars,meter:METERS[meter],intent,preset,seed,mode:'preview',candidate_count:4 }
+    const nextSeed = seed >= 2_147_483_647 ? 0 : seed + 1
+    setSeed(nextSeed)
+    const request: GenerateRequest = { bpm,bars,meter:METERS[meter],intent,preset,seed:nextSeed,mode:'preview',candidate_count:4 }
     const response = await api.generate(request); setCandidates(response.candidates); history.commit(response.candidates[0]); setSelectedBars(new Set()); setSelectedEvent(null)
   } catch (e) { setError(String(e)) } finally { setBusy(false) } }
   const choosePreset = (name: string) => { setPreset(name); const found = presets?.built_in[name] ?? presets?.user[name]; if (found) setIntent(structuredClone(found)) }
