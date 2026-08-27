@@ -7,8 +7,8 @@ it('toggles each preservation dimension independently', () => {
   const onChange = vi.fn()
   render(<PreserveOptions value={EMPTY_PRESERVE_OPTIONS} onChange={onChange} />)
 
-  fireEvent.click(screen.getByLabelText('Pitch'))
+  fireEvent.click(screen.getByLabelText('音程'))
 
   expect(onChange).toHaveBeenCalledWith({ ...EMPTY_PRESERVE_OPTIONS, keep_pitch: true })
-  expect(screen.getByText(/0 ACTIVE/)).toBeTruthy()
+  expect(screen.getByText(/0項目/)).toBeTruthy()
 })

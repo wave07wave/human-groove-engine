@@ -7,7 +7,7 @@ it('toggles a durable Intent Lock', () => {
   const onChange = vi.fn()
   render(<IntentLocks value={EMPTY_INTENT_LOCKS} onChange={onChange} />)
 
-  fireEvent.click(screen.getByLabelText('Register'))
+  fireEvent.click(screen.getByLabelText('音域'))
 
   expect(onChange).toHaveBeenCalledWith({ ...EMPTY_INTENT_LOCKS, keep_register: true })
 })

@@ -58,24 +58,24 @@ export function QuickComposer({ groove, bass, onReady, onOpenDetails }: Props) {
 
   return <main className="quick-composer">
     <section className="quick-hero panel">
-      <p className="eyebrow">EASY MODE · GROOVE + BASS</p>
+      <p className="eyebrow">かんたんモード · GROOVE + BASS</p>
       <h1>少ない設定で、すぐに一曲の土台を。</h1>
       <p>スタイル、Bassの役割、テンポだけを選べば、GrooveとBassを一緒に組み立てます。</p>
       <div className="quick-settings">
-        <label>GROOVE<select value={style} onChange={event => setStyle(event.target.value)}>{Object.keys(groovePresets?.built_in ?? { Balanced: 1 }).map(name => <option key={name}>{name}</option>)}</select></label>
-        <label>BASS<select value={bassRole} onChange={event => setBassRole(event.target.value)}>{Object.keys(bassPresets?.built_in ?? { Supportive: 1 }).map(name => <option key={name}>{name}</option>)}</select></label>
+        <label>Grooveのスタイル<select value={style} onChange={event => setStyle(event.target.value)}>{Object.keys(groovePresets?.built_in ?? { Balanced: 1 }).map(name => <option key={name}>{name}</option>)}</select></label>
+        <label>Bassの役割<select value={bassRole} onChange={event => setBassRole(event.target.value)}>{Object.keys(bassPresets?.built_in ?? { Supportive: 1 }).map(name => <option key={name}>{name}</option>)}</select></label>
         <label>BPM<input type="number" min="30" max="300" value={bpm} onChange={event => setBpm(Number(event.target.value))} /></label>
-        <label>LENGTH<select value={bars} onChange={event => setBars(Number(event.target.value))}>{[2, 4, 8, 16].map(value => <option key={value} value={value}>{value} bars</option>)}</select></label>
+        <label>長さ<select value={bars} onChange={event => setBars(Number(event.target.value))}>{[2, 4, 8, 16].map(value => <option key={value} value={value}>{value}小節</option>)}</select></label>
       </div>
     </section>
     <section className="quick-status panel">
-      <div><b>{groove && bass ? 'READY' : 'STEP 1'}</b><span>{groove && bass ? 'GrooveとBassを一緒に再生できます。' : '設定を選んでGENERATE ALLを押してください。'}</span></div>
-      <button className="secondary" disabled={!groove || !bass} onClick={onOpenDetails}>DETAIL EDITOR →</button>
+      <div><b>{groove && bass ? '準備完了' : '手順 1'}</b><span>{groove && bass ? 'GrooveとBassを一緒に再生できます。' : '設定を選んで「まとめて作成」を押してください。'}</span></div>
+      <button className="secondary" disabled={!groove || !bass} onClick={onOpenDetails}>詳細編集 →</button>
     </section>
     {error && <p className="error">{error}</p>}
     <div className="quick-actions" aria-label="Easy mode actions">
-      <button className="generate" disabled={busy || !groovePresets || !bassPresets} onClick={generateSong}>{busy ? 'BUILDING…' : 'GENERATE ALL'}</button>
-      <button className={playing ? 'play active' : 'play'} disabled={!groove || !bass} onClick={() => { if (groove && bass) void toggleMixPreview(groove, bass, setPlaying).catch(cause => setError(`音声を開始できません: ${String(cause)}`)) }}>{playing ? '■ STOP MIX' : '▶ PLAY FULL MIX'}</button>
+      <button className="generate" disabled={busy || !groovePresets || !bassPresets} onClick={generateSong}>{busy ? '作成中…' : 'まとめて作成'}</button>
+      <button className={playing ? 'play active' : 'play'} disabled={!groove || !bass} onClick={() => { if (groove && bass) void toggleMixPreview(groove, bass, setPlaying).catch(cause => setError(`音声を開始できません: ${String(cause)}`)) }}>{playing ? '■ 停止' : '▶ 同時再生'}</button>
     </div>
   </main>
 }

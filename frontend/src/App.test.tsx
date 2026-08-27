@@ -8,17 +8,17 @@ afterEach(() => vi.unstubAllGlobals())
 it('switches between Groove and Bass engines', () => {
   vi.stubGlobal('fetch', vi.fn(() => new Promise(() => undefined)))
   render(<App />)
-  expect(screen.getByText('Prediction needs a little friction.')).toBeTruthy()
+  expect(screen.getByText('少しの揺らぎが、Grooveを生む。')).toBeTruthy()
   fireEvent.click(screen.getByRole('button', { name: 'BASS' }))
-  expect(screen.getByText('Anchor. Move. Approach. Resolve.')).toBeTruthy()
+  expect(screen.getByText('支え、動き、導き、解決する。')).toBeTruthy()
 })
 
 it('offers an easy workspace alongside the detailed editors', () => {
   vi.stubGlobal('fetch', vi.fn(() => new Promise(() => undefined)))
   render(<App />)
-  fireEvent.click(screen.getByRole('button', { name: 'EASY' }))
+  fireEvent.click(screen.getByRole('button', { name: 'かんたん' }))
   expect(screen.getByText('少ない設定で、すぐに一曲の土台を。')).toBeTruthy()
-  expect(screen.getByRole('button', { name: 'GENERATE ALL' })).toBeTruthy()
+  expect(screen.getByRole('button', { name: 'まとめて作成' })).toBeTruthy()
 })
 
 it('passes the generated Groove candidate into the Bass context link flow', async () => {
@@ -43,7 +43,7 @@ it('passes the generated Groove candidate into the Bass context link flow', asyn
   }))
 
   render(<App />)
-  fireEvent.click(await screen.findByRole('button', { name: 'GENERATE' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Grooveを作成' }))
   await screen.findByText('Shared integration groove')
   fireEvent.click(screen.getByRole('button', { name: 'BASS' }))
   const link = screen.getByRole('button', { name: 'LINK CURRENT GROOVE' })

@@ -16,15 +16,15 @@ import './groove-link.css'
 import './interaction.css'
 
 const macroControls: [string, keyof BassIntentDNA][] = [
-  ['Stability', 'root_strength'], ['Motion', 'melodic_motion'], ['Syncopation', 'syncopation'],
-  ['Kick lock', 'kick_lock'], ['Melodic', 'stepwise_motion'], ['Chromatic', 'chromaticism'],
-  ['Density', 'density'], ['Silence', 'silence'], ['Human feel', 'human_feel'], ['Development', 'phrase_development'],
+  ['安定感', 'root_strength'], ['動き', 'melodic_motion'], ['シンコペーション', 'syncopation'],
+  ['Kickとの連動', 'kick_lock'], ['メロディ感', 'stepwise_motion'], ['クロマチック', 'chromaticism'],
+  ['密度', 'density'], ['休符', 'silence'], ['人間味', 'human_feel'], ['展開', 'phrase_development'],
 ]
 const modeOptions = ['major', 'natural_minor', 'harmonic_minor', 'melodic_minor', 'dorian', 'phrygian', 'lydian', 'mixolydian', 'aeolian', 'locrian', 'major_pentatonic', 'minor_pentatonic', 'blues', 'chromatic'] as const
 const mutations: { value: BassMutationOperation, label: string }[] = [
-  { value: 'regenerate', label: 'ALL FIELDS' }, { value: 'pitch_only', label: 'PITCH ONLY' },
-  { value: 'rhythm_only', label: 'RHYTHM ONLY' }, { value: 'timing_only', label: 'TIMING ONLY' },
-  { value: 'duration_only', label: 'DURATION ONLY' }, { value: 'articulation_only', label: 'ARTICULATION ONLY' },
+  { value: 'regenerate', label: 'すべて' }, { value: 'pitch_only', label: '音程のみ' },
+  { value: 'rhythm_only', label: 'リズムのみ' }, { value: 'timing_only', label: 'タイミングのみ' },
+  { value: 'duration_only', label: '音の長さのみ' }, { value: 'articulation_only', label: '奏法のみ' },
 ]
 
 function score(value: number | null | undefined) { return Math.round((value ?? 0) * 100) }
@@ -124,7 +124,7 @@ export function BassApp({ groovePattern, onGrooveUpdate, onBassPatternChange }: 
   const importJson = async (file: File | undefined) => { if (!file) return; setBusy(true); try { const exchange = JSON.parse(await file.text()) as BassPatternExchange; const imported = await bassApi.importPattern(exchange); applyPattern(imported); const next = await bassApi.patterns(); setSavedPatterns(next); setSavedPatternId(imported.pattern_id); setPersistenceNotice(`PATTERN IMPORTED · ${imported.name}`) } catch (cause) { setError(`JSON import failed: ${String(cause)}`) } finally { setBusy(false) } }
 
   return <div className="app-shell bass-app">
-    <header><div className="brand-mark bass-brand">HBE</div><div><p className="eyebrow">HUMAN BASS ENGINE</p><h1>Anchor. Move. Approach. Resolve.</h1></div><div className="header-actions"><button className="ghost-button" disabled={!history.canUndo} onClick={history.undo}>↶ Undo</button><button className="ghost-button" disabled={!history.canRedo} onClick={history.redo}>↷ Redo</button></div></header>
+    <header><div className="brand-mark bass-brand">HBE</div><div><p className="eyebrow">HUMAN BASS ENGINE</p><h1>支え、動き、導き、解決する。</h1></div><div className="header-actions"><button className="ghost-button" disabled={!history.canUndo} onClick={history.undo}>↶ 戻す</button><button className="ghost-button" disabled={!history.canRedo} onClick={history.redo}>↷ やり直す</button></div></header>
     <main>
       <section className="control-panel panel bass-controls">
         <div className="harmony-control"><label>INPUT MODE<select value={inputMode} onChange={e => setInputMode(e.target.value as BassGenerateRequest['input_mode'])}><option value="chord_progression">Chord progression</option><option value="key_mode">Key / Mode</option><option value="root_guide">Root guide</option><option value="no_harmony">No harmony</option></select></label><label className="harmony-input">HARMONY / ROOT GUIDE<input value={harmony} onChange={e => setHarmony(e.target.value)} placeholder="Dm7 | G7 | Cmaj7 | A7" /></label><label>KEY<input value={keyName} onChange={e => setKeyName(e.target.value)} /></label><label>MODE<select value={scaleMode} onChange={e => setScaleMode(e.target.value as BassGenerateRequest['mode'])}>{modeOptions.map(mode => <option key={mode}>{mode.replaceAll('_', ' ')}</option>)}</select></label></div>
