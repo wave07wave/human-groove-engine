@@ -11,4 +11,14 @@ describe('previewCoordinator', () => {
     expect(stopBass).not.toHaveBeenCalled()
     releasePreview('bass')
   })
+
+  it('treats the full mix as a third preview owner', () => {
+    const stopBass = vi.fn()
+    const stopMix = vi.fn()
+    claimPreview('bass', stopBass)
+    claimPreview('mix', stopMix)
+    expect(stopBass).toHaveBeenCalledOnce()
+    expect(stopMix).not.toHaveBeenCalled()
+    releasePreview('mix')
+  })
 })

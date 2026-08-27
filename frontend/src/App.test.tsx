@@ -13,6 +13,14 @@ it('switches between Groove and Bass engines', () => {
   expect(screen.getByText('Anchor. Move. Approach. Resolve.')).toBeTruthy()
 })
 
+it('offers an easy workspace alongside the detailed editors', () => {
+  vi.stubGlobal('fetch', vi.fn(() => new Promise(() => undefined)))
+  render(<App />)
+  fireEvent.click(screen.getByRole('button', { name: 'EASY' }))
+  expect(screen.getByText('少ない設定で、すぐに一曲の土台を。')).toBeTruthy()
+  expect(screen.getByRole('button', { name: 'GENERATE ALL' })).toBeTruthy()
+})
+
 it('passes the generated Groove candidate into the Bass context link flow', async () => {
   const intent = {
     target_dna: { pulse_stability: .7, syncopation: .4, surprise: .3, motor_affordance: .7, microtiming: .2, variation: .3, metric_ambiguity: .2, density: .5 },

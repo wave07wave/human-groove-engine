@@ -33,7 +33,7 @@ const qualitySuffix: Record<string, string> = { major: '', minor: 'm', major7: '
 function pitchClassText(pitch: { letter: string, accidental: number }) { return `${pitch.letter}${pitch.accidental > 0 ? '#'.repeat(pitch.accidental) : 'b'.repeat(-pitch.accidental)}` }
 function harmonyText(pattern: BassPattern) { return pattern.harmony.events.map(event => { if (!event.chord) return 'NO_CHORD'; const chord = event.chord; const slash = chord.bass_note ? `/${pitchClassText(chord.bass_note)}` : ''; return `${pitchClassText(chord.root)}${qualitySuffix[chord.quality] ?? chord.quality}${slash}` }).join(' | ') }
 
-export function BassApp({ groovePattern, onGrooveUpdate }: { groovePattern: GroovePattern | null, onGrooveUpdate?: (pattern: GroovePattern) => void }) {
+export function BassApp({ groovePattern, onGrooveUpdate, onBassPatternChange }: { groovePattern: GroovePattern | null, onGrooveUpdate?: (pattern: GroovePattern) => void, onBassPatternChange?: (pattern: BassPattern | null) => void }) {
   const [presets, setPresets] = useState<BassPresetsResponse | null>(null)
   const [intent, setIntent] = useState<BassIntent | null>(null)
   const [preset, setPreset] = useState('Supportive')
@@ -54,6 +54,7 @@ export function BassApp({ groovePattern, onGrooveUpdate }: { groovePattern: Groo
   const [evaluationStatus, setEvaluationStatus] = useState('')
   const pattern = history.present
 
+  useEffect(() => { onBassPatternChange?.(pattern) }, [onBassPatternChange, pattern])
   useEffect(() => { bassApi.presets().then(data => { setPresets(data); setIntent(structuredClone(data.built_in.Supportive)) }).catch(() => setError('Bass APIに接続できません。Backendを起動してください。')) }, [])
   useEffect(() => { bassApi.preferences().then(setPreference).catch(() => undefined) }, [])
   useEffect(() => { bassApi.patterns().then(data => setSavedPatterns(Array.isArray(data) ? data : [])).catch(() => undefined) }, [])

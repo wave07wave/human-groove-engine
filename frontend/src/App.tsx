@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
+import './quick.css'
 import { api } from './api/client'
+import { toggleMixPreview } from './audio/mixPreview'
 import { togglePreview } from './audio/preview'
 import { EventInspector } from './components/EventInspector'
 import { BassApp } from './components/BassApp'
 import { Knob } from './components/Knob'
 import { ListenerPanel } from './components/ListenerPanel'
+import { QuickComposer } from './components/QuickComposer'
 import { StepGrid } from './components/StepGrid'
 import { useHistory } from './hooks/useHistory'
-import type { GenerateRequest, GrooveDNA, GrooveEvent, GrooveIntent, GroovePattern, Instrument, PresetsResponse } from './types/generated'
+import type { BassPattern, GenerateRequest, GrooveDNA, GrooveEvent, GrooveIntent, GroovePattern, Instrument, PresetsResponse } from './types/generated'
 import { METERS, METER_OPTIONS } from './utils/meters'
 const baseDNA: GrooveDNA = { pulse_stability:.75,beat_salience:.75,syncopation:.45,anticipation:.35,omission:.2,density:.5,repetition:.65,variation:.35,interlock:.6,swing:.15,microtiming:.3,velocity_contrast:.45,duration_contrast:.3,low_end_anchor:.7,metric_ambiguity:.2,ghost_density:.25,surprise:.35,recovery_strength:.7,motor_affordance:.75,hypnotic:.35,phrase_development:.4 }
 const baseIntent: GrooveIntent = { target_dna: baseDNA, tolerance: { default:.12,per_dimension:{} }, priorities: { weights:{ pulse_stability:1.2,syncopation:1,density:.8,variation:.7,interlock:1,surprise:.8 } }, movement_target:'bounce' }
@@ -67,6 +70,19 @@ function GrooveApp({ onPatternChange, externalPattern }: { onPatternChange?: (pa
 
 export default function App() {
   const [engine, setEngine] = useState<'groove' | 'bass'>('groove')
+  const [mode, setMode] = useState<'easy' | 'detail'>('detail')
   const [sharedGroove, setSharedGroove] = useState<GroovePattern | null>(null)
-  return <><nav className="engine-switch" aria-label="Engine selection"><button className={engine === 'groove' ? 'active' : ''} onClick={() => setEngine('groove')}>GROOVE</button><button className={engine === 'bass' ? 'active' : ''} onClick={() => setEngine('bass')}>BASS</button></nav><div hidden={engine !== 'groove'}><GrooveApp onPatternChange={setSharedGroove} externalPattern={sharedGroove} /></div><div hidden={engine !== 'bass'}><BassApp groovePattern={sharedGroove} onGrooveUpdate={setSharedGroove} /></div></>
+  const [sharedBass, setSharedBass] = useState<BassPattern | null>(null)
+  const [mixPlaying, setMixPlaying] = useState(false)
+  return <>
+    <nav className="engine-switch" aria-label="Workspace selection">
+      <div className="mode-switch" aria-label="Mode selection"><button className={mode === 'easy' ? 'active' : ''} onClick={() => setMode('easy')}>EASY</button><button className={mode === 'detail' ? 'active' : ''} onClick={() => setMode('detail')}>DETAIL</button></div>
+      {mode === 'detail' && <div className="engine-tabs"><button className={engine === 'groove' ? 'active' : ''} onClick={() => setEngine('groove')}>GROOVE</button><button className={engine === 'bass' ? 'active' : ''} onClick={() => setEngine('bass')}>BASS</button></div>}
+    </nav>
+    {sharedGroove && sharedBass && <aside className="mix-transport" aria-label="Full mix transport"><span>FULL MIX · GROOVE + BASS</span><button className={mixPlaying ? 'play active' : 'play'} onClick={() => toggleMixPreview(sharedGroove, sharedBass, setMixPlaying)}>{mixPlaying ? '■ STOP' : '▶ PLAY'}</button></aside>}
+    {mode === 'easy' ? <QuickComposer groove={sharedGroove} bass={sharedBass} onReady={(groove, bass) => { setSharedGroove(groove); setSharedBass(bass) }} onOpenDetails={() => setMode('detail')} /> : <>
+      <div hidden={engine !== 'groove'}><GrooveApp onPatternChange={setSharedGroove} externalPattern={sharedGroove} /></div>
+      <div hidden={engine !== 'bass'}><BassApp groovePattern={sharedGroove} onGrooveUpdate={setSharedGroove} onBassPatternChange={setSharedBass} /></div>
+    </>}
+  </>
 }
