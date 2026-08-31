@@ -40,10 +40,19 @@ export class RecordedDrumVoice {
     await Tone.loaded()
   }
 
-  trigger(time: Tone.Unit.Time, velocity: number, eventId: string, gainScale = 1) {
+  trigger(
+    time: Tone.Unit.Time,
+    velocity: number,
+    eventId: string,
+    gainScale = 1,
+    durationSeconds?: number,
+  ) {
     const take = recordedTakeIndexForVelocity(eventId, velocity, this.velocityRanges)
     const gain = Math.max(0, Math.min(1, drumVelocityGain(velocity) * gainScale))
-    this.voices[take].triggerAttackRelease('C4', this.duration, time, gain)
+    // Keep a kit's natural envelope, while allowing authored note lengths to
+    // shape short ghosts and longer accents just as they do in MIDI export.
+    const duration = Math.max(.025, Math.min(this.duration * 2.5, durationSeconds ?? this.duration))
+    this.voices[take].triggerAttackRelease('C4', duration, time, gain)
   }
 
   dispose() {

@@ -53,7 +53,7 @@ export async function togglePreview(pattern: GroovePattern, onState: (value: boo
       const duration = Math.max(.02, event.duration_tick * 60 / (pattern.bpm * 960))
       const velocity = event.velocity / 127
       if (event.instrument !== 'bass') {
-        drumKit?.trigger(event.instrument, time, velocity, event.event_id)
+        drumKit?.trigger(event.instrument, time, velocity, event.event_id, duration)
         return
       }
       bass?.triggerAttackRelease('C2', duration, time, velocity)

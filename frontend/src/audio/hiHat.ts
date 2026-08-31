@@ -43,20 +43,28 @@ export class HiHatVoice {
     await Tone.loaded()
   }
 
-  trigger(kind: 'closed' | 'open', time: Tone.Unit.Time, velocity: number, eventId: string) {
+  trigger(
+    kind: 'closed' | 'open',
+    time: Tone.Unit.Time,
+    velocity: number,
+    eventId: string,
+    durationSeconds?: number,
+  ) {
     const gain = drumVelocityGain(velocity)
     const eventTime = Tone.Time(time).toSeconds()
     if (kind === 'closed') {
       if (eventTime < this.openUntil) this.open.forEach(voice => voice.releaseAll(time))
       this.openUntil = 0
       const voice = this.closed[recordedTakeIndex(eventId, this.closed.length)]
-      voice.triggerAttackRelease('C4', this.profile.closedDuration, time, gain)
+      const duration = Math.max(.035, Math.min(this.profile.closedDuration * 1.5, durationSeconds ?? this.profile.closedDuration))
+      voice.triggerAttackRelease('C4', duration, time, gain)
       return
     }
     if (eventTime < this.openUntil) this.open.forEach(voice => voice.releaseAll(time))
     const voice = this.open[recordedTakeIndex(eventId, this.open.length)]
-    voice.triggerAttackRelease('C4', this.profile.openDuration, time, gain)
-    this.openUntil = eventTime + this.profile.openDuration
+    const duration = Math.max(.12, Math.min(this.profile.openDuration * 1.35, durationSeconds ?? this.profile.openDuration))
+    voice.triggerAttackRelease('C4', duration, time, gain)
+    this.openUntil = eventTime + duration
   }
 
   dispose() {

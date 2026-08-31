@@ -48,7 +48,7 @@ depending on Groove generator internals.
 
 ## Setup
 
-Python 3.12 or newer is required. From this directory:
+Python 3.12 or 3.13 is required. From this directory:
 
 ```bash
 /path/to/python3.12 -m venv .venv312

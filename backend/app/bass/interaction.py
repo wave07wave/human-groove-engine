@@ -83,9 +83,7 @@ def _aligned_request(request: JointGenerateRequest, groove: GroovePattern) -> Ba
     bass_target = request.shared_complexity_budget * request.bass_complexity_share
     intent.target.density = clamp(0.62 * intent.target.density + 0.38 * bass_target)
     intent.target.syncopation = clamp(0.72 * intent.target.syncopation + 0.28 * bass_target)
-    intent.target.melodic_motion = clamp(
-        0.78 * intent.target.melodic_motion + 0.22 * bass_target
-    )
+    intent.target.melodic_motion = clamp(0.78 * intent.target.melodic_motion + 0.22 * bass_target)
     intent.target.silence = clamp(0.72 * intent.target.silence + 0.28 * (1 - bass_target))
     return request.bass_request.model_copy(
         update={
@@ -112,9 +110,7 @@ def _phrase_complexity_targets(bars: int, overall: float) -> list[float]:
     return [clamp(overall * contour[bar % len(contour)]) for bar in range(bars)]
 
 
-def _apply_phrase_complexity_to_bass(
-    bass: BassPattern, targets: list[float]
-) -> BassPattern:
+def _apply_phrase_complexity_to_bass(bass: BassPattern, targets: list[float]) -> BassPattern:
     result = deepcopy(bass)
     selected_ids: set[str] = set()
     approach_targets = {
@@ -122,9 +118,7 @@ def _apply_phrase_complexity_to_bass(
     }
     for bar, target in enumerate(targets):
         events = [
-            event
-            for event in result.events
-            if event.grid_tick // result.meter.bar_ticks == bar
+            event for event in result.events if event.grid_tick // result.meter.bar_ticks == bar
         ]
         if not events:
             continue
@@ -141,9 +135,7 @@ def _apply_phrase_complexity_to_bass(
             reverse=True,
         )
         selected_ids.update(event.event_id for event in ranked[:wanted])
-    selected_events = [
-        event for event in result.events if event.event_id in selected_ids
-    ]
+    selected_events = [event for event in result.events if event.event_id in selected_ids]
     valid_ids = {event.event_id for event in selected_events}
     selected_events = [
         event
@@ -204,6 +196,18 @@ def _complexity_fit(
     return clamp(1 - distance / 1.35)
 
 
+def _played_drum_fitness(groove: GroovePattern) -> float:
+    """Score the drum bed that is actually heard in a Groove + Bass preview."""
+    if not any(event.instrument == InstrumentID.BASS for event in groove.events):
+        return (groove.analysis or analyze_pattern(groove)).fitness
+    drum_only = deepcopy(groove)
+    drum_only.events = [
+        event for event in drum_only.events if event.instrument != InstrumentID.BASS
+    ]
+    drum_only.analysis = None
+    return analyze_pattern(drum_only).fitness
+
+
 def _make_result(
     request: JointGenerateRequest,
     groove: GroovePattern,
@@ -212,9 +216,8 @@ def _make_result(
     change_cost: float,
     preference: BassPreferenceSummary | None = None,
 ) -> JointGenerationResult:
-    groove_analysis = groove.analysis or analyze_pattern(groove)
     if groove.pattern_id != request.groove_pattern.pattern_id:
-        groove.analysis = groove_analysis
+        groove.analysis = analyze_pattern(groove)
     bass.groove_context = groove_context_from_pattern(groove)
     attach_decision_traces(bass)
     bass.analysis = analyze_bass_pattern(bass)
@@ -227,7 +230,7 @@ def _make_result(
         request.shared_complexity_budget,
         request.bass_complexity_share,
     )
-    groove_fitness = groove_analysis.fitness
+    groove_fitness = _played_drum_fitness(groove)
     bass_fitness = blended_candidate_score(bass, preference)
     fitness = (
         0.42 * bass_fitness
@@ -385,11 +388,7 @@ def _co_created_groove(
         and event.grid_tick // source.meter.bar_ticks not in source.bar_locks
     ]
     available_by_bar = {
-        bar: [
-            event
-            for event in new_kicks
-            if event.grid_tick // source.meter.bar_ticks == bar
-        ]
+        bar: [event for event in new_kicks if event.grid_tick // source.meter.bar_ticks == bar]
         for bar in range(len(kick_targets))
     }
     selected_by_bar = {}
@@ -419,9 +418,7 @@ def _co_created_groove(
         if recovery_bar >= len(kick_targets):
             continue
         peak_count = protected_kick_counts[peak_bar] + len(selected_by_bar[peak_bar])
-        recovery_count = protected_kick_counts[recovery_bar] + len(
-            selected_by_bar[recovery_bar]
-        )
+        recovery_count = protected_kick_counts[recovery_bar] + len(selected_by_bar[recovery_bar])
         selected_peak_ids = {event.event_id for event in selected_by_bar[peak_bar]}
         additions = [
             event
@@ -437,9 +434,7 @@ def _co_created_groove(
                 selected_by_bar[recovery_bar], key=kick_rank, reverse=True
             )[: max(0, len(selected_by_bar[recovery_bar]) - excess)]
 
-    reduced_kicks = [
-        event for bar in range(len(kick_targets)) for event in selected_by_bar[bar]
-    ]
+    reduced_kicks = [event for bar in range(len(kick_targets)) for event in selected_by_bar[bar]]
     result = deepcopy(source)
     result.events = sorted(
         protected + reduced_kicks,
@@ -478,9 +473,7 @@ def _co_create(
         request.shared_complexity_budget * request.bass_complexity_share,
     )
     for candidate in range(pool_size):
-        groove, changes, cost = _co_created_groove(
-            request.groove_pattern, candidate, kick_targets
-        )
+        groove, changes, cost = _co_created_groove(request.groove_pattern, candidate, kick_targets)
         aligned = _aligned_request(request, groove)
         bass = _apply_phrase_complexity_to_bass(
             generate_preference_search_bass_pattern(
@@ -506,9 +499,7 @@ def generate_joint_candidates(
         candidates = _co_create(request, preference)
     if request.reference_render_analysis:
         for candidate in candidates:
-            rendered = analyze_reference_render(
-                candidate.groove_pattern, candidate.bass_pattern
-            )
+            rendered = analyze_reference_render(candidate.groove_pattern, candidate.bass_pattern)
             candidate.rendered_audio = rendered
             if rendered is not None:
                 candidate.joint_fitness = (

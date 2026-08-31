@@ -36,7 +36,7 @@ function candidate(patternId: string, tick: number): GroovePattern {
     meter: { numerator: 4, denominator: 4, grouping: [2, 2], subdivisions_per_quarter: 4 },
     events: [{ event_id: `${patternId}-kick`, instrument: 'kick', grid_tick: tick, structural_offset_tick: 0, micro_offset_us: 0, duration_tick: 180, velocity: 100, pitch: 36, primary_role: 'anchor', role_tags: [], accent: .9, timbre_variant: null, duration_style: 'medium', choke_group: null, locked: false, origin: 'generated' }],
     intent: { target_dna: dna, tolerance: { default: .12, per_dimension: {} }, priorities: { weights: {} }, movement_target: 'bounce', phrase_energy_curve: [] },
-    metadata: { engine_version: '0.10.0', analysis_version: '1.4', schema_version: '1.0', preset_version: '1.0', rng_algorithm: 'PCG64DXSM', master_seed: 42, style: 'Balanced', performance_model: 'rule-pocket-v1', performance_model_version: '1.0.0', render_profile: 'studio-tight-v1' },
+    metadata: { engine_version: '0.11.0', analysis_version: '1.5', schema_version: '1.0', preset_version: '1.0', rng_algorithm: 'PCG64DXSM', master_seed: 42, style: 'Balanced', performance_model: 'rule-pocket-v1', performance_model_version: '1.0.0', render_profile: 'studio-tight-v1' },
     analysis: { measured_dna: { ...dna, density: Math.min(1, .2 + tick / 2000) } },
     instrument_locks: [],
     bar_locks: [],

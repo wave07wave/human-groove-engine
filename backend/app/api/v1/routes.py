@@ -62,6 +62,7 @@ def generate(request: GenerateRequest) -> GenerateResponse:
         performance_mode=request.performance_mode,
         render_profile=request.render_profile,
         preset=request.preset,
+        candidate_strategy=request.candidate_strategy,
         preference=preference,
         motor_tempo_profile=db.motor_tempo_profile(request.anonymous_session_id),
         embodied_operator_scores=db.embodied_operator_scores(
@@ -148,7 +149,7 @@ def submit_embodied_evaluation(request: EmbodiedEvaluationRequest) -> EmbodiedEv
 
 @router.get("/evaluation/embodied/summary", response_model=EmbodiedEvaluationSummary)
 def embodied_evaluation_summary(
-    anonymous_session_id: str = Query(..., min_length=8, max_length=80, pattern=r"^[A-Za-z0-9-]+$")
+    anonymous_session_id: str = Query(..., min_length=8, max_length=80, pattern=r"^[A-Za-z0-9-]+$"),
 ) -> EmbodiedEvaluationSummary:
     return db.embodied_evaluation_summary(anonymous_session_id)
 

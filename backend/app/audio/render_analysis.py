@@ -122,6 +122,32 @@ def reference_velocity_gain(velocity: int) -> float:
     return normalized**1.25
 
 
+def _event_seconds(event, pattern: GroovePattern) -> float:
+    return event.performed_tick * 60 / (pattern.bpm * PPQ) + event.micro_offset_us / 1_000_000
+
+
+def _open_hat_choke_seconds(pattern: GroovePattern) -> dict[str, float]:
+    """Map each open hat to the exact performed time of its later choke hit."""
+    hat_events = sorted(
+        (
+            (_event_seconds(event, pattern), event)
+            for event in pattern.events
+            if event.choke_group == "hihat"
+            and event.instrument in (InstrumentID.CLOSED_HAT, InstrumentID.OPEN_HAT)
+        ),
+        key=lambda item: (item[0], item[1].event_id),
+    )
+    choke_times: dict[str, float] = {}
+    active_open: tuple[float, str] | None = None
+    for onset, event in hat_events:
+        if active_open is not None and onset > active_open[0]:
+            choke_times[active_open[1]] = onset
+            active_open = None
+        if event.instrument == InstrumentID.OPEN_HAT:
+            active_open = (onset, event.event_id)
+    return choke_times
+
+
 def analyze_reference_render(
     pattern: GroovePattern, bass_pattern: BassPattern | None = None
 ) -> RenderedAudioAnalysis | None:
@@ -142,6 +168,7 @@ def analyze_reference_render(
     rendered_events = 0
     selected_index = {bar: index for index, bar in enumerate(bars)}
     max_tail_samples = round(0.5 * profile.sample_rate)
+    open_hat_choke_times = _open_hat_choke_seconds(pattern)
 
     render_events = [
         (event, event.instrument, event.primary_role)
@@ -167,6 +194,12 @@ def analyze_reference_render(
             instrument.decay_ms / 1_000,
             event.duration_tick * 60 / (pattern.bpm * PPQ),
         )
+        choke_time = open_hat_choke_times.get(event.event_id)
+        if choke_time is not None:
+            event_seconds = min(
+                event_seconds,
+                max(0.008, choke_time - _event_seconds(event, pattern)),
+            )
         samples = min(max_tail_samples, max(8, round(event_seconds * profile.sample_rate)))
         stop = min(total_samples, start + samples)
         if stop <= start:

@@ -1,6 +1,7 @@
 from app.analysis.listener import analyze_pattern
 from app.embodied_evaluation import calibrate_motor_tempo, save_embodied_evaluation
 from app.engine.generator import generate_pattern
+from app.engine.optimizer import generate_candidate_pool
 from app.models.evaluation import (
     EmbodiedEvaluationRequest,
     MotorTempoCalibrationRequest,
@@ -77,3 +78,48 @@ def test_comfortable_tap_and_embodied_feedback_are_optional_and_persisted(tmp_pa
     assert summary.total_evaluations == 8
     assert summary.operator_arms[0].evaluations == 8
     assert summary.sufficient_for_personal_comparison
+
+
+def test_embodied_challenge_changes_a_four_bar_phrase_and_is_honest_when_too_short() -> None:
+    meter = MeterDefinition.from_name("4/4")
+    calm = GrooveIntent()
+    challenging = GrooveIntent()
+    challenging.embodied.challenge = 0.9
+    baseline = generate_pattern(
+        bpm=108, bars=4, meter=meter, intent=calm, seed=77, performance_mode="rule"
+    )
+    changed = generate_pattern(
+        bpm=108, bars=4, meter=meter, intent=challenging, seed=77, performance_mode="rule"
+    )
+    short = generate_pattern(
+        bpm=108, bars=2, meter=meter, intent=challenging, seed=77, performance_mode="rule"
+    )
+    three_bar = generate_pattern(
+        bpm=108, bars=3, meter=meter, intent=challenging, seed=77, performance_mode="rule"
+    )
+
+    assert [(event.event_id, event.primary_role) for event in changed.events] != [
+        (event.event_id, event.primary_role) for event in baseline.events
+    ]
+    assert changed.metadata.embodied_operator_arm.startswith("challenge")
+    assert three_bar.metadata.embodied_operator_arm.startswith("challenge")
+    assert short.metadata.embodied_operator_arm == "baseline"
+
+
+def test_optimizer_preserves_requested_embodied_intent() -> None:
+    meter = MeterDefinition.from_name("4/4")
+    calm = GrooveIntent()
+    challenging = GrooveIntent()
+    challenging.embodied.challenge = 0.9
+    calm_candidates = generate_candidate_pool(
+        bpm=108, bars=4, meter=meter, intent=calm, seed=808, performance_mode="rule"
+    )
+    challenge_candidates = generate_candidate_pool(
+        bpm=108, bars=4, meter=meter, intent=challenging, seed=808, performance_mode="rule"
+    )
+
+    assert all(candidate.intent.embodied.challenge == 0 for candidate in calm_candidates)
+    assert all(candidate.intent.embodied.challenge == 0.9 for candidate in challenge_candidates)
+    assert [candidate.events for candidate in calm_candidates] != [
+        candidate.events for candidate in challenge_candidates
+    ]

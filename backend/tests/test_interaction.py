@@ -105,13 +105,9 @@ def test_follow_keeps_groove_events_exactly_fixed() -> None:
     ("meter_name", "bars"),
     [("4/4", 1), ("3/4", 4), ("5/8", 8), ("6/8", 16), ("12/8", 4), ("4/4", 64)],
 )
-def test_follow_contract_across_meter_and_length_boundaries(
-    meter_name: str, bars: int
-) -> None:
+def test_follow_contract_across_meter_and_length_boundaries(meter_name: str, bars: int) -> None:
     meter = MeterDefinition.from_name(meter_name)
-    groove = generate_pattern(
-        bpm=118, bars=bars, meter=meter, intent=GrooveIntent(), seed=1301
-    )
+    groove = generate_pattern(bpm=118, bars=bars, meter=meter, intent=GrooveIntent(), seed=1301)
     request = JointGenerateRequest(
         groove_pattern=groove,
         bass_request=BassGenerateRequest(
@@ -262,8 +258,7 @@ def test_co_create_applies_shared_phrase_peak_and_recovery() -> None:
     bar_ticks = candidate.groove_pattern.meter.bar_ticks
     kick_counts = [
         sum(
-            event.instrument == InstrumentID.KICK
-            and event.grid_tick // bar_ticks == bar
+            event.instrument == InstrumentID.KICK and event.grid_tick // bar_ticks == bar
             for event in candidate.groove_pattern.events
         )
         for bar in range(4)
@@ -276,8 +271,7 @@ def test_co_create_applies_shared_phrase_peak_and_recovery() -> None:
     assert kick_counts[2] > kick_counts[3]
     assert bass_counts[2] > bass_counts[3]
     assert any(
-        event.rhythmic_role.value == "recovery"
-        and event.grid_tick // bar_ticks == 3
+        event.rhythmic_role.value == "recovery" and event.grid_tick // bar_ticks == 3
         for event in bass_events
     )
 
@@ -286,10 +280,7 @@ def test_co_create_returns_distinct_joint_candidates() -> None:
     response = generate_joint_candidates(request_for(IntegrationMode.CO_CREATE, count=4))
     signatures = {
         (
-            tuple(
-                (event.grid_tick, event.pitch)
-                for event in candidate.bass_pattern.events
-            ),
+            tuple((event.grid_tick, event.pitch) for event in candidate.bass_pattern.events),
             tuple(
                 (event.grid_tick, event.velocity)
                 for event in candidate.groove_pattern.events
@@ -323,6 +314,21 @@ def test_joint_reference_render_uses_the_generated_bass_lane() -> None:
     assert rendered.scope == "joint"
     assert rendered.low_end_collision_applicable
     assert rendered.rendered_events > 0
+
+
+def test_joint_fitness_ignores_the_internal_bass_lane_that_mix_preview_replaces() -> None:
+    original = request_for(IntegrationMode.FOLLOW, count=1)
+    drum_only = original.model_copy(deep=True)
+    drum_only.groove_pattern.events = [
+        event for event in drum_only.groove_pattern.events if event.instrument != InstrumentID.BASS
+    ]
+    drum_only.groove_pattern.analysis = None
+
+    with_internal_bass = generate_joint_candidates(original).candidates[0]
+    without_internal_bass = generate_joint_candidates(drum_only).candidates[0]
+
+    assert with_internal_bass.interaction == without_internal_bass.interaction
+    assert with_internal_bass.joint_fitness == pytest.approx(without_internal_bass.joint_fitness)
 
 
 def test_joint_api_rejects_mismatched_structure() -> None:

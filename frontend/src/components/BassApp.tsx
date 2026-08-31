@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { bassApi } from '../api/client'
 import type { BassPreviewMode } from '../audio/bassPreview'
 import { useHistory } from '../hooks/useHistory'
@@ -34,7 +34,7 @@ const qualitySuffix: Record<string, string> = { major: '', minor: 'm', major7: '
 function pitchClassText(pitch: { letter: string, accidental: number }) { return `${pitch.letter}${pitch.accidental > 0 ? '#'.repeat(pitch.accidental) : 'b'.repeat(-pitch.accidental)}` }
 function harmonyText(pattern: BassPattern) { return pattern.harmony.events.map(event => { if (!event.chord) return 'NO_CHORD'; const chord = event.chord; const slash = chord.bass_note ? `/${pitchClassText(chord.bass_note)}` : ''; return `${pitchClassText(chord.root)}${qualitySuffix[chord.quality] ?? chord.quality}${slash}` }).join(' | ') }
 
-export function BassApp({ groovePattern, onGrooveUpdate, onBassPatternChange }: { groovePattern: GroovePattern | null, onGrooveUpdate?: (pattern: GroovePattern) => void, onBassPatternChange?: (pattern: BassPattern | null) => void }) {
+export function BassApp({ groovePattern, externalPattern, onGrooveUpdate, onBassPatternChange }: { groovePattern: GroovePattern | null, externalPattern?: BassPattern | null, onGrooveUpdate?: (pattern: GroovePattern) => void, onBassPatternChange?: (pattern: BassPattern | null) => void }) {
   const [presets, setPresets] = useState<BassPresetsResponse | null>(null)
   const [intent, setIntent] = useState<BassIntent | null>(null)
   const [preset, setPreset] = useState('Supportive')
@@ -54,9 +54,11 @@ export function BassApp({ groovePattern, onGrooveUpdate, onBassPatternChange }: 
   const [generationHistory, setGenerationHistory] = useState<BassGenerationRecord[]>([]); const [generationId, setGenerationId] = useState('')
   const [evaluationStatus, setEvaluationStatus] = useState('')
   const pattern = history.present
+  const commitHistory = history.commit
+  const latestExternalPattern = useRef<BassPattern | null | undefined>(externalPattern)
 
-  useEffect(() => { onBassPatternChange?.(pattern) }, [onBassPatternChange, pattern])
-  useEffect(() => { bassApi.presets().then(data => { setPresets(data); setIntent(structuredClone(data.built_in.Supportive)) }).catch(() => setError('Bass APIに接続できません。Backendを起動してください。')) }, [])
+  useEffect(() => { if (pattern) onBassPatternChange?.(pattern) }, [onBassPatternChange, pattern])
+  useEffect(() => { bassApi.presets().then(data => { setPresets(data); if (!latestExternalPattern.current) setIntent(structuredClone(data.built_in.Supportive)) }).catch(() => setError('Bass APIに接続できません。Backendを起動してください。')) }, [])
   useEffect(() => {
     let active = true
     bassApi.preferences(preset).then(profile => { if (active) setPreference(profile) }).catch(() => undefined)
@@ -66,6 +68,35 @@ export function BassApp({ groovePattern, onGrooveUpdate, onBassPatternChange }: 
   useEffect(() => { bassApi.patterns().then(data => setSavedPatterns(Array.isArray(data) ? data : [])).catch(() => undefined) }, [])
   useEffect(() => { bassApi.generationHistory().then(data => setGenerationHistory(Array.isArray(data) ? data : [])).catch(() => undefined) }, [])
   useEffect(() => { setGrooveContext(null) }, [groovePattern?.pattern_id])
+  useEffect(() => {
+    latestExternalPattern.current = externalPattern
+    if (!externalPattern || externalPattern.pattern_id === pattern?.pattern_id) return
+    commitHistory(externalPattern)
+    setCandidates([externalPattern])
+    setJointResults([])
+    setIntent(structuredClone(externalPattern.intent))
+    setPreset(externalPattern.metadata.preset)
+    setHarmony(harmonyText(externalPattern))
+    setBpm(externalPattern.bpm)
+    setBars(externalPattern.bars)
+    setVoicePolicy(externalPattern.voice_policy)
+    setInputMode(externalPattern.input_mode)
+    setGrooveContext(externalPattern.groove_context ?? null)
+    const meterName = `${externalPattern.meter.numerator}/${externalPattern.meter.denominator}`
+    if (METERS[meterName]) setMeter(meterName)
+    if (externalPattern.key_context) {
+      setKeyName(pitchClassText(externalPattern.key_context.tonic))
+      setScaleMode(externalPattern.key_context.mode)
+    } else {
+      setKeyName('')
+    }
+    setRegisterLow(externalPattern.register_limits.lowest_midi_note)
+    setRegisterHigh(externalPattern.register_limits.highest_midi_note)
+    setRegisterCenter(externalPattern.register_limits.preferred_center)
+    setMaxLeap(externalPattern.register_limits.max_single_leap)
+    setSelected(null)
+    setSelectedBars(new Set())
+  }, [externalPattern, commitHistory, pattern?.pattern_id])
   useEffect(() => {
     setSelected(current => current && pattern ? pattern.events.find(event => event.event_id === current.event_id) ?? null : null)
   }, [pattern])

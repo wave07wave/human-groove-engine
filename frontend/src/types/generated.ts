@@ -23,7 +23,7 @@ export type MotorTempoProfile = { bpm:number, interval_ms:number, dispersion:num
 export type EmbodiedOperatorSummary = { operator_arm:string, evaluations:number, average_urge_to_move:number, average_pleasure:number, average_beat_clarity:number }
 export type EmbodiedEvaluationSummary = { total_evaluations:number, operator_arms:EmbodiedOperatorSummary[], minimum_evaluations_per_arm:number, sufficient_for_personal_comparison:boolean, caveat:string }
 export type EmbodiedEvaluationResult = { accepted:boolean, evidence_class:'self_report'|'tap'|'motion', caveat:string }
-export type GrooveAnalysis = Omit<Schema['GrooveAnalysis'], 'confidence'> & {
+export type GrooveAnalysis = Omit<Schema['GrooveAnalysis-Output'], 'confidence'> & {
   confidence: Schema['AnalysisConfidence']
   embodied?: EmbodiedGrooveFeatures | null
 }
@@ -57,10 +57,12 @@ export type GroovePattern = Omit<PatternOutput, 'events' | 'intent' | 'analysis'
   bar_locks: number[]
 }
 
-export type GenerateRequest = Omit<Schema['GenerateRequest'], 'meter' | 'intent' | 'render_profile'> & {
+export type GenerateRequest = Omit<Schema['GenerateRequest'], 'meter' | 'intent' | 'render_profile' | 'candidate_strategy'> & {
   meter: MeterDefinition
   intent: GrooveIntent
   render_profile: 'studio-tight-v1' | 'warm-pocket-v1' | 'club-punch-v1' | 'vintage-dust-v1'
+  /** The API defaults to quality; Easy mode opts into controlled exploration. */
+  candidate_strategy?: 'quality' | 'explore'
   anonymous_session_id?: string
 }
 export type GroovePreferenceSummary = Schema['GroovePreferenceSummary']

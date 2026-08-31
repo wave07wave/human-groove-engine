@@ -141,6 +141,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/evaluation/embodied": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit Embodied Evaluation */
+        post: operations["submit_embodied_evaluation_api_v1_evaluation_embodied_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/evaluation/embodied/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Embodied Evaluation Summary */
+        get: operations["embodied_evaluation_summary_api_v1_evaluation_embodied_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/evaluation/motor-tempo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Motor Tempo Calibration */
+        post: operations["motor_tempo_calibration_api_v1_evaluation_motor_tempo_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/quality/audit": {
         parameters: {
             query?: never;
@@ -1338,7 +1389,7 @@ export interface components {
         BassPatternMetadata: {
             /**
              * Engine Version
-             * @default 0.10.0
+             * @default 0.11.0
              */
             engine_version: string;
             /**
@@ -1348,7 +1399,7 @@ export interface components {
             schema_version: string;
             /**
              * Analysis Version
-             * @default 1.4
+             * @default 1.5
              */
             analysis_version: string;
             /**
@@ -1848,6 +1899,172 @@ export interface components {
          * @enum {string}
          */
         DurationStyle: "short" | "medium" | "long" | "legato" | "staccato" | "overlap" | "choke";
+        /** EmbodiedEstimates */
+        EmbodiedEstimates: {
+            /** Urge To Move Prior */
+            urge_to_move_prior: number;
+            /** Pleasure Prior */
+            pleasure_prior: number;
+            /** Uncertainty */
+            uncertainty: number;
+            /**
+             * Caveat
+             * @default Research heuristic; not a measurement of a person's body or emotion.
+             */
+            caveat: string;
+        };
+        /** EmbodiedEvaluationRequest */
+        EmbodiedEvaluationRequest: {
+            /** Anonymous Session Id */
+            anonymous_session_id: string;
+            pattern: components["schemas"]["GroovePattern-Input"];
+            /** Urge To Move */
+            urge_to_move: number;
+            /** Pleasure */
+            pleasure: number;
+            /** Beat Clarity */
+            beat_clarity: number;
+            /** Familiarity */
+            familiarity?: number | null;
+            /** Style Liking */
+            style_liking?: number | null;
+            tap_observation?: components["schemas"]["TapObservation"] | null;
+            motion_observation?: components["schemas"]["MotionObservation"] | null;
+            /**
+             * Listening Context
+             * @default unknown
+             * @enum {string}
+             */
+            listening_context: "unknown" | "headphones" | "speakers";
+            /**
+             * Posture
+             * @default unknown
+             * @enum {string}
+             */
+            posture: "unknown" | "seated" | "standing";
+            /**
+             * Motion Consent
+             * @default false
+             */
+            motion_consent: boolean;
+        };
+        /** EmbodiedEvaluationResult */
+        EmbodiedEvaluationResult: {
+            /**
+             * Accepted
+             * @default true
+             */
+            accepted: boolean;
+            /**
+             * Evidence Class
+             * @enum {string}
+             */
+            evidence_class: "self_report" | "tap" | "motion";
+            /**
+             * Caveat
+             * @default Stored as optional evaluation evidence, not as proof that the pattern makes people dance.
+             */
+            caveat: string;
+        };
+        /** EmbodiedEvaluationSummary */
+        EmbodiedEvaluationSummary: {
+            /** Total Evaluations */
+            total_evaluations: number;
+            /** Operator Arms */
+            operator_arms: components["schemas"]["EmbodiedOperatorSummary"][];
+            /**
+             * Minimum Evaluations Per Arm
+             * @default 8
+             */
+            minimum_evaluations_per_arm: number;
+            /**
+             * Sufficient For Personal Comparison
+             * @default false
+             */
+            sufficient_for_personal_comparison: boolean;
+            /**
+             * Caveat
+             * @default Personal, optional self-report summary. It is not evidence of a general dance effect.
+             */
+            caveat: string;
+        };
+        /** EmbodiedGrooveFeatures */
+        "EmbodiedGrooveFeatures-Input": {
+            /**
+             * Schema Version
+             * @default 1.0
+             */
+            schema_version: string;
+            motor_scaffold: components["schemas"]["MotorScaffoldAnalysis"];
+            prediction_error: components["schemas"]["PredictionErrorAnalysis"];
+            timing_coherence: components["schemas"]["TimingCoherenceAnalysis"];
+            low_end_motion: components["schemas"]["LowEndMotionAnalysis"];
+            phrase_renewal: components["schemas"]["PhraseRenewalAnalysis"];
+            estimates: components["schemas"]["EmbodiedEstimates"];
+        };
+        /** EmbodiedGrooveFeatures */
+        "EmbodiedGrooveFeatures-Output": {
+            /**
+             * Schema Version
+             * @default 1.0
+             */
+            schema_version: string;
+            motor_scaffold: components["schemas"]["MotorScaffoldAnalysis"];
+            prediction_error: components["schemas"]["PredictionErrorAnalysis"];
+            timing_coherence: components["schemas"]["TimingCoherenceAnalysis"];
+            low_end_motion: components["schemas"]["LowEndMotionAnalysis"];
+            phrase_renewal: components["schemas"]["PhraseRenewalAnalysis"];
+            estimates: components["schemas"]["EmbodiedEstimates"];
+        };
+        /**
+         * EmbodiedIntent
+         * @description Optional, explainable controls for the embodied groove research layer.
+         */
+        EmbodiedIntent: {
+            /**
+             * Challenge
+             * @default 0
+             */
+            challenge: number;
+            /**
+             * Renewal
+             * @default 0
+             */
+            renewal: number;
+            /**
+             * Timing Coherence
+             * @default 0.7
+             */
+            timing_coherence: number;
+            /**
+             * Low End Motion
+             * @default 0.6
+             */
+            low_end_motion: number;
+            /**
+             * Meter Familiarity
+             * @default 0.5
+             */
+            meter_familiarity: number;
+            /**
+             * Style Familiarity
+             * @default 0.5
+             */
+            style_familiarity: number;
+        };
+        /** EmbodiedOperatorSummary */
+        EmbodiedOperatorSummary: {
+            /** Operator Arm */
+            operator_arm: string;
+            /** Evaluations */
+            evaluations: number;
+            /** Average Urge To Move */
+            average_urge_to_move: number;
+            /** Average Pleasure */
+            average_pleasure: number;
+            /** Average Beat Clarity */
+            average_beat_clarity: number;
+        };
         /** EvaluationGroupSummary */
         EvaluationGroupSummary: {
             /**
@@ -1989,12 +2206,20 @@ export interface components {
              * @default studio-tight-v1
              * @enum {string}
              */
-            render_profile: "studio-tight-v1" | "warm-pocket-v1" | "off";
+            render_profile: "studio-tight-v1" | "warm-pocket-v1" | "club-punch-v1" | "vintage-dust-v1" | "off";
             /**
              * Candidate Count
              * @default 4
              */
             candidate_count: number;
+            /**
+             * Candidate Strategy
+             * @default quality
+             * @enum {string}
+             */
+            candidate_strategy: "quality" | "explore";
+            /** Anonymous Session Id */
+            anonymous_session_id?: string | null;
         };
         /** GenerateResponse */
         GenerateResponse: {
@@ -2003,7 +2228,7 @@ export interface components {
             preference_profile?: components["schemas"]["GroovePreferenceSummary"] | null;
         };
         /** GrooveAnalysis */
-        GrooveAnalysis: {
+        "GrooveAnalysis-Input": {
             measured_dna: components["schemas"]["GrooveDNA"];
             listener: components["schemas"]["ListenerAnalysis"];
             confidence?: components["schemas"]["AnalysisConfidence"];
@@ -2018,6 +2243,25 @@ export interface components {
              */
             fitness: number;
             rendered_audio?: components["schemas"]["RenderedAudioAnalysis"] | null;
+            embodied?: components["schemas"]["EmbodiedGrooveFeatures-Input"] | null;
+        };
+        /** GrooveAnalysis */
+        "GrooveAnalysis-Output": {
+            measured_dna: components["schemas"]["GrooveDNA"];
+            listener: components["schemas"]["ListenerAnalysis"];
+            confidence?: components["schemas"]["AnalysisConfidence"];
+            /**
+             * Intent Loss
+             * @default 0
+             */
+            intent_loss: number;
+            /**
+             * Fitness
+             * @default 0
+             */
+            fitness: number;
+            rendered_audio?: components["schemas"]["RenderedAudioAnalysis"] | null;
+            embodied?: components["schemas"]["EmbodiedGrooveFeatures-Output"] | null;
         };
         /** GrooveContext */
         "GrooveContext-Input": {
@@ -2227,6 +2471,7 @@ export interface components {
             movement_target: string;
             /** Phrase Energy Curve */
             phrase_energy_curve?: number[];
+            embodied?: components["schemas"]["EmbodiedIntent"];
         };
         /** GroovePattern */
         "GroovePattern-Input": {
@@ -2246,7 +2491,7 @@ export interface components {
             events: components["schemas"]["GrooveEvent"][];
             intent: components["schemas"]["GrooveIntent"];
             metadata: components["schemas"]["PatternMetadata"];
-            analysis?: components["schemas"]["GrooveAnalysis"] | null;
+            analysis?: components["schemas"]["GrooveAnalysis-Input"] | null;
             /** Instrument Locks */
             instrument_locks?: components["schemas"]["InstrumentID"][];
             /** Bar Locks */
@@ -2270,7 +2515,7 @@ export interface components {
             events: components["schemas"]["GrooveEvent"][];
             intent: components["schemas"]["GrooveIntent"];
             metadata: components["schemas"]["PatternMetadata"];
-            analysis?: components["schemas"]["GrooveAnalysis"] | null;
+            analysis?: components["schemas"]["GrooveAnalysis-Output"] | null;
             /** Instrument Locks */
             instrument_locks?: components["schemas"]["InstrumentID"][];
             /** Bar Locks */
@@ -2293,7 +2538,7 @@ export interface components {
              * @description Evidence that selected candidates were closer to this range than rejected ones
              * @default 0
              */
-            evidence?: number;
+            evidence: number;
         };
         /** GroovePreferenceSummary */
         GroovePreferenceSummary: {
@@ -2567,6 +2812,22 @@ export interface components {
             /** Confidence */
             confidence: number;
         };
+        /** LowEndMotionAnalysis */
+        LowEndMotionAnalysis: {
+            /** Symbolic Coupling */
+            symbolic_coupling: number;
+            /** Spectral Flux 50 100Hz */
+            spectral_flux_50_100hz?: number | null;
+            /** Onset Coherence */
+            onset_coherence?: number | null;
+            /** Envelope Cycle */
+            envelope_cycle?: number | null;
+            /**
+             * Render Applicable
+             * @default false
+             */
+            render_applicable: boolean;
+        };
         /** MeterDefinition */
         MeterDefinition: {
             /** Numerator */
@@ -2583,6 +2844,15 @@ export interface components {
              * @default 4
              */
             subdivisions_per_quarter: number;
+        };
+        /** MetricLevelAnalysis */
+        MetricLevelAnalysis: {
+            /** Clarity */
+            clarity: number;
+            /** Phase Stability */
+            phase_stability: number;
+            /** Activity */
+            activity: number;
         };
         /** MetricResult */
         MetricResult: {
@@ -2625,6 +2895,49 @@ export interface components {
             midi_base64: string;
             current_intent?: components["schemas"]["GrooveIntent"];
         };
+        /** MotionObservation */
+        MotionObservation: {
+            /** Periodic Energy */
+            periodic_energy: number;
+            /** Movement Energy */
+            movement_energy: number;
+            /** Device Quality */
+            device_quality: number;
+        };
+        /** MotorScaffoldAnalysis */
+        MotorScaffoldAnalysis: {
+            subdivision: components["schemas"]["MetricLevelAnalysis"];
+            tactus: components["schemas"]["MetricLevelAnalysis"];
+            half_time: components["schemas"]["MetricLevelAnalysis"];
+            bar_cycle: components["schemas"]["MetricLevelAnalysis"];
+        };
+        /** MotorTempoCalibrationRequest */
+        MotorTempoCalibrationRequest: {
+            /** Anonymous Session Id */
+            anonymous_session_id: string;
+            /** Timestamps Ms */
+            timestamps_ms: number[];
+        };
+        /** MotorTempoProfile */
+        MotorTempoProfile: {
+            /** Bpm */
+            bpm: number;
+            /** Interval Ms */
+            interval_ms: number;
+            /** Dispersion */
+            dispersion: number;
+            /** Confidence */
+            confidence: number;
+            /** Tempo Aliases */
+            tempo_aliases: number[];
+            /** Accepted Taps */
+            accepted_taps: number;
+            /**
+             * Caveat
+             * @default Optional comfortable-tap estimate; it does not replace your chosen BPM.
+             */
+            caveat: string;
+        };
         /** MutateRequest */
         MutateRequest: {
             pattern: components["schemas"]["GroovePattern-Input"];
@@ -2647,12 +2960,12 @@ export interface components {
         PatternMetadata: {
             /**
              * Engine Version
-             * @default 0.10.0
+             * @default 0.11.0
              */
             engine_version: string;
             /**
              * Analysis Version
-             * @default 1.4
+             * @default 1.5
              */
             analysis_version: string;
             /**
@@ -2704,6 +3017,56 @@ export interface components {
             preference_guidance_strength: number;
             /** Preference Guided Features */
             preference_guided_features?: string[];
+            /**
+             * Embodied Operator Arm
+             * @default baseline
+             */
+            embodied_operator_arm: string;
+            /**
+             * Knowledge Pack Id
+             * @default neutral-v1
+             */
+            knowledge_pack_id: string;
+            /**
+             * Knowledge Pack Version
+             * @default 1.0
+             */
+            knowledge_pack_version: string;
+            /**
+             * Hat Language Profile
+             * @default neutral-hat-v1
+             */
+            hat_language_profile: string;
+            /** Hat Variant Ids */
+            hat_variant_ids?: string[];
+            /** Drum Variant Ids */
+            drum_variant_ids?: string[];
+            /** Phrase Arrangement Ids */
+            phrase_arrangement_ids?: string[];
+        };
+        /** PhraseRenewalAnalysis */
+        PhraseRenewalAnalysis: {
+            /** Motif Memory */
+            motif_memory: number;
+            /** Layer Entry Lift */
+            layer_entry_lift: number;
+            /** Challenge Strength */
+            challenge_strength: number;
+            /** Reentry Strength */
+            reentry_strength: number;
+        };
+        /** PredictionErrorAnalysis */
+        PredictionErrorAnalysis: {
+            /** Event Surprise */
+            event_surprise: number;
+            /** Omission Surprise */
+            omission_surprise: number;
+            /** Concentration */
+            concentration: number;
+            /** Recoverable Ratio */
+            recoverable_ratio: number;
+            /** Context Confidence */
+            context_confidence: number;
         };
         /** PreferenceRange */
         PreferenceRange: {
@@ -2722,7 +3085,7 @@ export interface components {
              * @description Evidence that selected candidates were closer to this range than rejected ones
              * @default 0
              */
-            evidence?: number;
+            evidence: number;
         };
         /** PreferenceRequest */
         PreferenceRequest: {
@@ -2841,6 +3204,12 @@ export interface components {
             headroom: number;
             /** Render Quality */
             render_quality: number;
+            /** Low Frequency Flux */
+            low_frequency_flux?: number | null;
+            /** Kick Bass Onset Coherence */
+            kick_bass_onset_coherence?: number | null;
+            /** Low End Envelope Cycle */
+            low_end_envelope_cycle?: number | null;
             /** Confidence */
             confidence: number;
             /** Caveat */
@@ -2928,6 +3297,15 @@ export interface components {
             timestamps_ms: number[];
             current_intent?: components["schemas"]["GrooveIntent"];
         };
+        /** TapObservation */
+        TapObservation: {
+            /** Phase Error */
+            phase_error?: number | null;
+            /** Period Error */
+            period_error?: number | null;
+            /** Variability */
+            variability?: number | null;
+        };
         /**
          * TechniqueType
          * @enum {string}
@@ -2950,6 +3328,23 @@ export interface components {
              * @default 100
              */
             bpm: number;
+        };
+        /** TimingCoherenceAnalysis */
+        TimingCoherenceAnalysis: {
+            /** Lane Offsets Ms */
+            lane_offsets_ms?: {
+                [key: string]: number;
+            };
+            /** Within Lane Dispersion */
+            within_lane_dispersion: number;
+            /** Pairwise Phase Coherence */
+            pairwise_phase_coherence: number;
+            /** Shared Drift */
+            shared_drift: number;
+            /** Independent Jitter */
+            independent_jitter: number;
+            /** Coherence */
+            coherence: number;
         };
         /** ValidationError */
         ValidationError: {
@@ -3247,6 +3642,103 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EvaluationSummary"];
+                };
+            };
+        };
+    };
+    submit_embodied_evaluation_api_v1_evaluation_embodied_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmbodiedEvaluationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmbodiedEvaluationResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    embodied_evaluation_summary_api_v1_evaluation_embodied_summary_get: {
+        parameters: {
+            query: {
+                anonymous_session_id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmbodiedEvaluationSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    motor_tempo_calibration_api_v1_evaluation_motor_tempo_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MotorTempoCalibrationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MotorTempoProfile"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

@@ -73,9 +73,7 @@ def measure_syncopation(pattern: GroovePattern) -> float:
                 ):
                     next_stronger = max(next_stronger, future_gravity - gravity)
             role_bonus = (
-                0.24
-                if event.primary_role in (EventRole.VIOLATION, EventRole.ANTICIPATION)
-                else 0.0
+                0.24 if event.primary_role in (EventRole.VIOLATION, EventRole.ANTICIPATION) else 0.0
             )
             score += next_stronger * (0.55 + 0.45 * event.accent) + role_bonus
             possible += 1.0
@@ -109,14 +107,63 @@ def measure_variation(pattern: GroovePattern) -> float:
     return clamp(float(np.mean(changes)))
 
 
+def _conditional_response_lift(
+    anchors: set[int],
+    responses: set[int],
+    offset: int,
+    pattern: GroovePattern,
+) -> float | None:
+    """Score a response above the chance expected from hat density alone."""
+    if not anchors:
+        return None
+    targets = set()
+    for anchor in anchors:
+        bar_start = anchor // pattern.meter.bar_ticks * pattern.meter.bar_ticks
+        target = anchor + offset
+        if bar_start <= target < bar_start + pattern.meter.bar_ticks:
+            targets.add(target)
+    if not targets:
+        return None
+    slots = pattern.bars * pattern.meter.bar_ticks / pattern.meter.subdivision_tick
+    background_density = len(responses) / max(1, slots)
+    hit_rate = len(targets & responses) / len(targets)
+    # Filling every slot should not look like intentional call-and-response.
+    return clamp((hit_rate - background_density) / max(1e-9, 1 - background_density))
+
+
 def measure_interlock(pattern: GroovePattern) -> float:
-    kicks = {e.grid_tick for e in pattern.events if e.instrument == InstrumentID.KICK}
-    bass = {e.grid_tick for e in pattern.events if e.instrument == InstrumentID.BASS}
-    percs = {e.grid_tick for e in pattern.events if e.instrument == InstrumentID.PERCUSSION}
-    snares = {e.grid_tick for e in pattern.events if e.instrument == InstrumentID.SNARE}
-    lock = len(kicks & bass) / max(1, len(kicks | bass))
-    complement = len(percs - kicks - snares) / max(1, len(percs))
-    return clamp(0.65 * lock + 0.35 * complement)
+    """Measure audible drum conversation, independently of a placeholder Bass lane.
+
+    Groove-only previews do not necessarily play the internal Bass events: a
+    joint BassPattern replaces them.  Interlock therefore measures the drum
+    conversation here; the joint engine evaluates real kick/Bass interaction
+    from the supplied BassPattern separately.
+    """
+    kicks = {event.grid_tick for event in pattern.events if event.instrument == InstrumentID.KICK}
+    snares = {event.grid_tick for event in pattern.events if event.instrument == InstrumentID.SNARE}
+    hats = {
+        event.grid_tick
+        for event in pattern.events
+        if event.instrument in (InstrumentID.CLOSED_HAT, InstrumentID.OPEN_HAT)
+    }
+    percs = {
+        event.grid_tick for event in pattern.events if event.instrument == InstrumentID.PERCUSSION
+    }
+    step = pattern.meter.subdivision_tick
+    components: list[tuple[float, float]] = []
+    kick_reply = _conditional_response_lift(kicks, hats, step, pattern)
+    if kick_reply is not None:
+        components.append((0.45, kick_reply))
+    snare_pickup = _conditional_response_lift(snares, hats, -step, pattern)
+    if snare_pickup is not None:
+        components.append((0.35, snare_pickup))
+    if percs:
+        complement = len(percs - kicks - snares) / len(percs)
+        components.append((0.20, complement))
+    if not components:
+        return 0.0
+    total_weight = sum(weight for weight, _value in components)
+    return clamp(sum(weight * value for weight, value in components) / total_weight)
 
 
 def measure_swing(pattern: GroovePattern) -> float:
@@ -187,9 +234,7 @@ def measure_omission(pattern: GroovePattern) -> float:
         return 0.0
     kicks = {event.grid_tick for event in pattern.events if event.instrument == InstrumentID.KICK}
     opportunities = [
-        bar * pattern.meter.bar_ticks + local
-        for bar in range(pattern.bars)
-        for local in expected
+        bar * pattern.meter.bar_ticks + local for bar in range(pattern.bars) for local in expected
     ]
     missing = sum(tick not in kicks for tick in opportunities)
     return clamp(missing / len(opportunities))

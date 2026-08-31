@@ -112,3 +112,39 @@ it('applies the matching Groove when a Joint Candidate is selected', async () =>
   fireEvent.click(screen.getByRole('button', { name: /^B.*試聴候補/ }))
   await waitFor(() => expect(onGrooveUpdate).toHaveBeenLastCalledWith(secondGroove))
 })
+
+it('keeps an externally supplied Bass pattern instead of clearing the shared selection', async () => {
+  const external = bassPattern('easy-mode-bass')
+  external.bpm = 124
+  external.bars = 2
+  external.voice_policy = 'allow_overlap'
+  external.metadata = { ...external.metadata, preset: 'Supportive' }
+  const onBassPatternChange = vi.fn()
+  vi.stubGlobal('fetch', vi.fn((input: string | URL | Request) => {
+    const url = String(input)
+    if (url === '/api/v1/bass/evaluate') {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(external) })
+    }
+    if (url.includes('/patterns') || url.includes('/history/generations')) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve([]) })
+    }
+    if (url.includes('/preferences')) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(null) })
+    }
+    return Promise.resolve({ ok: true, json: () => Promise.resolve({ built_in: { Supportive: intent }, user: {} }) })
+  }))
+
+  render(
+    <BassApp
+      groovePattern={groove}
+      externalPattern={external}
+      onBassPatternChange={onBassPatternChange}
+    />,
+  )
+
+  await waitFor(() => expect(onBassPatternChange).toHaveBeenCalledWith(external))
+  expect(onBassPatternChange).not.toHaveBeenCalledWith(null)
+  expect((screen.getByLabelText('BPM') as HTMLInputElement).value).toBe('124')
+  expect((screen.getByLabelText('BARS') as HTMLSelectElement).value).toBe('2')
+  expect((screen.getByLabelText('VOICE POLICY') as HTMLSelectElement).value).toBe('allow_overlap')
+})

@@ -12,11 +12,31 @@ const WIDTH_ADJUSTMENTS: Record<PatternWidth, Record<string, number>> = {
   adventurous: { variation: .28, surprise: .2, syncopation: .15, interlock: .14, density: .09, metric_ambiguity: .1, phrase_development: .2 },
 }
 
+const BASS_WIDTH_ADJUSTMENTS: Record<PatternWidth, Record<string, number>> = {
+  focused: { variation: -.12, phrase_development: -.1, syncopation: -.06, silence: .08 },
+  wide: { variation: .14, phrase_development: .12, syncopation: .08, melodic_motion: .06, density: .04 },
+  adventurous: { variation: .24, phrase_development: .2, syncopation: .14, melodic_motion: .12, density: .08, silence: -.06 },
+}
+
+const JOINT_COMPLEXITY: Record<PatternWidth, number> = { focused: .42, wide: .65, adventurous: .78 }
+const BASS_COMPLEXITY_SHARE: Record<PatternWidth, number> = { focused: .56, wide: .62, adventurous: .67 }
+
 function withPatternWidth<T extends { target_dna?: Record<string, unknown> }>(intent: T, width: PatternWidth): T {
   const adjusted = structuredClone(intent)
   const dna = adjusted.target_dna
   if (!dna) return adjusted
   for (const [key, delta] of Object.entries(WIDTH_ADJUSTMENTS[width])) {
+    const value = dna[key]
+    if (typeof value === 'number') dna[key] = Math.max(0, Math.min(1, value + delta))
+  }
+  return adjusted
+}
+
+function withBassPatternWidth<T extends { target?: Record<string, unknown> }>(intent: T, width: PatternWidth): T {
+  const adjusted = structuredClone(intent)
+  const dna = adjusted.target
+  if (!dna) return adjusted
+  for (const [key, delta] of Object.entries(BASS_WIDTH_ADJUSTMENTS[width])) {
     const value = dna[key]
     if (typeof value === 'number') dna[key] = Math.max(0, Math.min(1, value + delta))
   }
@@ -52,7 +72,8 @@ export function QuickComposer({ groove, bass, onReady, onOpenDetails }: Props) {
   const generateSong = async () => {
     const baseGrooveIntent = groovePresets?.built_in[style] ?? groovePresets?.built_in.Balanced
     const grooveIntent = baseGrooveIntent && withPatternWidth(baseGrooveIntent, patternWidth)
-    const bassIntent = bassPresets?.built_in[bassRole] ?? bassPresets?.built_in.Supportive
+    const baseBassIntent = bassPresets?.built_in[bassRole] ?? bassPresets?.built_in.Supportive
+    const bassIntent = baseBassIntent && withBassPatternWidth(baseBassIntent, patternWidth)
     if (!grooveIntent || !bassIntent) return
     setBusy(true)
     setError('')
@@ -61,7 +82,8 @@ export function QuickComposer({ groove, bass, onReady, onOpenDetails }: Props) {
       setSeed(nextSeed)
       const grooveResponse = await api.generate({
         bpm, bars, meter: METERS['4/4'], intent: grooveIntent, preset: style,
-        seed: nextSeed, mode: 'preview', performance_mode: 'auto', render_profile: renderProfile, candidate_count: 1,
+        seed: nextSeed, mode: 'preview', performance_mode: 'auto', render_profile: renderProfile,
+        candidate_count: 1, candidate_strategy: 'explore',
       })
       const nextGroove = grooveResponse.candidates[0]
       const request: BassGenerateRequest = {
@@ -71,7 +93,13 @@ export function QuickComposer({ groove, bass, onReady, onOpenDetails }: Props) {
         register_limits: { lowest_midi_note: 28, highest_midi_note: 60, preferred_center: 42, preferred_zone: 'core', max_single_leap: 12 },
         voice_policy: 'monophonic_retrigger', groove_context: null,
       }
-      const response = await bassApi.jointGenerate(nextGroove, request, 'follow', .55, .60)
+      const response = await bassApi.jointGenerate(
+        nextGroove,
+        request,
+        'follow',
+        JOINT_COMPLEXITY[patternWidth],
+        BASS_COMPLEXITY_SHARE[patternWidth],
+      )
       const selected = response.candidates[0]
       onReady(selected.groove_pattern, selected.bass_pattern)
     } catch (cause) {

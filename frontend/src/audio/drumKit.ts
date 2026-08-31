@@ -86,16 +86,28 @@ export class DrumKitVoice {
     ])
   }
 
-  trigger(instrument: DrumInstrument, time: Tone.Unit.Time, velocity: number, eventId: string) {
+  trigger(
+    instrument: DrumInstrument,
+    time: Tone.Unit.Time,
+    velocity: number,
+    eventId: string,
+    durationSeconds?: number,
+  ) {
     const gain = Math.max(.05, Math.min(1, velocity))
     if (instrument === 'closed_hat' || instrument === 'open_hat') {
-      this.hiHat.trigger(instrument === 'closed_hat' ? 'closed' : 'open', time, gain, eventId)
+      this.hiHat.trigger(
+        instrument === 'closed_hat' ? 'closed' : 'open',
+        time,
+        gain,
+        eventId,
+        durationSeconds,
+      )
     } else if (instrument === 'kick') {
-      this.kick.trigger(time, gain, eventId)
+      this.kick.trigger(time, gain, eventId, 1, durationSeconds)
     } else if (instrument === 'snare') {
-      this.snare.trigger(time, gain, eventId)
+      this.snare.trigger(time, gain, eventId, 1, durationSeconds)
     } else {
-      this.percussion.trigger(time, gain, eventId, .78)
+      this.percussion.trigger(time, gain, eventId, .78, durationSeconds)
     }
   }
 

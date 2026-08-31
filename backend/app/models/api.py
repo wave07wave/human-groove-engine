@@ -23,6 +23,7 @@ class GenerateRequest(BaseModel):
         "studio-tight-v1", "warm-pocket-v1", "club-punch-v1", "vintage-dust-v1", "off"
     ] = "studio-tight-v1"
     candidate_count: int = Field(4, ge=1, le=4)
+    candidate_strategy: Literal["quality", "explore"] = "quality"
     anonymous_session_id: str | None = Field(
         default=None, min_length=8, max_length=80, pattern=r"^[A-Za-z0-9-]+$"
     )

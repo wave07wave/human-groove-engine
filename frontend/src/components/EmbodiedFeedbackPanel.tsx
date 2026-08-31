@@ -2,21 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 
 import { api } from '../api/client'
 import type { EmbodiedEvaluationSummary, GroovePattern, MotorTempoProfile } from '../types/generated'
-
-const sessionKey = 'hge-embodied-session-v1'
-let memorySessionId: string | null = null
-
-export function anonymousSessionId() {
-  let storage: Storage | null = null
-  try { storage = globalThis.localStorage ?? null } catch { storage = null }
-  const existing = storage?.getItem(sessionKey)
-  if (existing) return existing
-  if (memorySessionId) return memorySessionId
-  const value = globalThis.crypto?.randomUUID?.().replaceAll('_', '-') ?? `session-${Date.now()}-${Math.random().toString(36).slice(2)}`
-  try { storage?.setItem(sessionKey, value) } catch { /* in-memory fallback for private/test contexts */ }
-  memorySessionId = value
-  return value
-}
+import { anonymousSessionId } from '../utils/anonymousSession'
 
 function tapVariability(taps: number[]) {
   if (taps.length < 4) return null
@@ -56,5 +42,5 @@ export function EmbodiedFeedbackPanel({ pattern, onTempoSuggested }: { pattern: 
     } catch (error) { setMessage(`保存できませんでした: ${String(error)}`) }
   }
   const sliders: [string, number, (value:number) => void][] = [['動きたくなる',urge,setUrge],['心地よい',pleasure,setPleasure],['拍が分かる',clarity,setClarity],['聴き慣れ',familiarity,setFamiliarity],['スタイルの好み',styleLiking,setStyleLiking]]
-  return <section className="embodied-feedback panel"><div><p className="eyebrow">身体のフィードバック</p><h2>動きたくなる感覚を教えてください</h2><p className="muted">予測値の学習用です。動きや個人情報を出さなくても使えます。</p></div><div className="embodied-sliders">{sliders.map(([label,value,setter])=><label key={label}><span>{label}</span><input type="range" min="0" max="100" value={value} onChange={event => setter(Number(event.target.value))}/><b>{value}</b></label>)}</div><div className="embodied-actions"><button onClick={tap}>● 拍に合わせてタップ</button><small>{taps.length} taps</small><button onClick={() => void submit()}>評価を保存</button></div><div className="motor-tempo"><b>自分の自然なテンポ</b><small>音なしで気持ちよく12回以上タップします。</small><button onClick={calibrateTap}>● 自然にタップ</button><span>{calibration.length} taps</span><button disabled={calibration.length < 12} onClick={() => void finishCalibration()}>テンポを測る</button>{profile&&<em>{Math.round(profile.bpm)} BPM · {profile.tempo_aliases.map(value=>Math.round(value)).join(' / ')}</em>}</div><div className="motion-feedback"><label><input type="checkbox" checked={motionConsent} onChange={event=>setMotionConsent(event.target.checked)}/> 6秒間の動きの要約を、この評価に使う</label><button disabled={!motionConsent} onClick={() => void captureMotion()}>動きを計測</button><small>生のモーション値は保存しません。</small></div>{summary&&<div className="embodied-summary"><b>あなたの評価傾向 · {summary.total_evaluations}件</b>{summary.operator_arms.map(arm=><span key={arm.operator_arm}>{arm.operator_arm} · 動 {Math.round(arm.average_urge_to_move)} / 心 {Math.round(arm.average_pleasure)} <small>({arm.evaluations}件)</small></span>)}<small>{summary.sufficient_for_personal_comparison ? '個人内の比較の目安が集まりました。' : `各アーム${summary.minimum_evaluations_per_arm}件以上で比較の目安になります。`}</small></div>}{message&&<p className="capture-notice">{message}</p>}</section>
+  return <section className="embodied-feedback panel"><div><p className="eyebrow">身体のフィードバック</p><h2>動きたくなる感覚を教えてください</h2><p className="muted">予測値の学習用です。動きや個人情報を出さなくても使えます。</p></div><div className="embodied-sliders">{sliders.map(([label,value,setter])=><label key={label}><span>{label}</span><input type="range" min="0" max="100" value={value} onChange={event => setter(Number(event.target.value))}/><b>{value}</b></label>)}</div><div className="embodied-actions"><button onClick={tap}>● 拍に合わせてタップ</button><small>{taps.length} taps</small><button onClick={() => void submit()}>評価を保存</button></div><div className="motor-tempo"><b>自分の自然なテンポ</b><small>音なしで気持ちよく12回以上タップします。</small><button onClick={calibrateTap}>● 自然にタップ</button><span>{calibration.length} taps</span><button disabled={calibration.length < 12} onClick={() => void finishCalibration()}>テンポを測る</button>{profile&&<em>{Math.round(profile.bpm)} BPM · {profile.tempo_aliases.map(value=>Math.round(value)).join(' / ')}</em>}</div><div className="motion-feedback"><label><input type="checkbox" checked={motionConsent} onChange={event=>setMotionConsent(event.target.checked)}/> 6秒間の動きの要約を、この評価に使う</label><button disabled={!motionConsent} onClick={() => void captureMotion()}>動きを計測</button><small>生のモーション値は保存しません。</small></div>{summary&&<div className="embodied-summary"><b>あなたの評価傾向 · {summary.total_evaluations}件</b>{(summary.operator_arms ?? []).map(arm=><span key={arm.operator_arm}>{arm.operator_arm} · 動 {Math.round(arm.average_urge_to_move)} / 心 {Math.round(arm.average_pleasure)} <small>({arm.evaluations}件)</small></span>)}<small>{summary.sufficient_for_personal_comparison ? '個人内の比較の目安が集まりました。' : `各アーム${summary.minimum_evaluations_per_arm}件以上で比較の目安になります。`}</small></div>}{message&&<p className="capture-notice">{message}</p>}</section>
 }

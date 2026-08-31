@@ -104,14 +104,19 @@ def _event(
     elif instrument == InstrumentID.OPEN_HAT:
         velocity += round((accent - 0.5) * 18)
     velocity = max(1, min(127, velocity))
+    duration_unit = PPQ // 4
     duration_factor = 0.48 + dna.duration_contrast * float(rng.uniform(0.05, 1.1))
     if instrument == InstrumentID.BASS:
         duration_factor += 0.7
     elif instrument == InstrumentID.CLOSED_HAT:
         duration_factor = 0.23 + 0.22 * dna.duration_contrast
     elif instrument == InstrumentID.OPEN_HAT:
-        duration_factor = 0.9 + 0.48 * dna.duration_contrast
-    duration = max(60, int((PPQ // 4) * duration_factor))
+        # An open cymbal needs an audible tail.  Its duration is intentionally
+        # expressed against a quarter note (rather than a 16th) so browser
+        # preview, reference analysis and MIDI export share a musical length.
+        duration_unit = PPQ
+        duration_factor = 0.72 + 0.52 * dna.duration_contrast
+    duration = max(60, int(duration_unit * duration_factor))
     pitch = 36 if instrument == InstrumentID.BASS else DRUM_PITCHES.get(instrument.value)
     choke = "hihat" if instrument in (InstrumentID.CLOSED_HAT, InstrumentID.OPEN_HAT) else None
     duration_style = DurationStyle.STACCATO if duration < 180 else DurationStyle.MEDIUM
@@ -186,7 +191,21 @@ def generate_pattern(
             + arrangement.vocabulary_offsets[arrangement_slot]
         ) % len(hat_variants)
         hat_variant = hat_variants[vocabulary_index]
-        drum_variant = drum_variants[vocabulary_index % len(drum_variants)]
+        # Start Kick/Snare from the same vocabulary family as the hats, then
+        # occasionally add a compatible drum ornament.  This preserves a
+        # shared pulse while avoiding only four fixed whole-kit pairings.
+        drum_rng = hrng.stream(
+            "drum-ornament", candidate, bar // 2, motif, arrangement.arrangement_id
+        )
+        ornament_probability = min(
+            0.65, max(0.0, 0.52 * dna.variation + 0.34 * dna.surprise - 0.14)
+        )
+        drum_offset = (
+            int(drum_rng.choice((-1, 1)))
+            if len(drum_variants) > 1 and float(drum_rng.random()) < ornament_probability
+            else 0
+        )
+        drum_variant = drum_variants[(vocabulary_index + drum_offset) % len(drum_variants)]
         hat_variant_ids.append(hat_variant.variant_id)
         drum_variant_ids.append(drum_variant.variant_id)
         phrase_arrangement_ids.append(arrangement.arrangement_id)
@@ -278,12 +297,16 @@ def generate_pattern(
                     # Pushes after kick hits, pickups into the snare and the
                     # shared phrase-answer position create interlocking motion.
                     response_chance = (
-                        0.12
-                        + 0.38 * dna.interlock
-                        + 0.28 * dna.syncopation
-                        + 0.18 * dna.motor_affordance
-                        + 0.22 * hat_style.pickup_bias
-                    ) * (0.72 + 0.35 * tension) * hat_variant.pickup_scale
+                        (
+                            0.12
+                            + 0.38 * dna.interlock
+                            + 0.28 * dna.syncopation
+                            + 0.18 * dna.motor_affordance
+                            + 0.22 * hat_style.pickup_bias
+                        )
+                        * (0.72 + 0.35 * tension)
+                        * hat_variant.pickup_scale
+                    )
                     if (
                         not on
                         and previous_kick
@@ -335,12 +358,16 @@ def generate_pattern(
                     # The phrase ending can briefly become more detailed, but
                     # only on legal inner subdivisions and never on every bar.
                     subdivision_chance = (
-                        max(0, dna.density - 0.34) * 0.34
-                        + variation_scale * 0.22
-                        + dna.surprise * 0.12
-                        + dna.metric_ambiguity * 0.11
-                        + 0.22 * hat_style.subdivision_bias
-                    ) * (0.62 + 0.48 * tension) * hat_variant.subdivision_scale
+                        (
+                            max(0, dna.density - 0.34) * 0.34
+                            + variation_scale * 0.22
+                            + dna.surprise * 0.12
+                            + dna.metric_ambiguity * 0.11
+                            + 0.22 * hat_style.subdivision_bias
+                        )
+                        * (0.62 + 0.48 * tension)
+                        * hat_variant.subdivision_scale
+                    )
                     if (
                         not on
                         and subdivision
@@ -348,12 +375,7 @@ def generate_pattern(
                         and structural_draw() < subdivision_chance
                     ):
                         on, role, accent = True, EventRole.DECORATION, 0.26 + 0.2 * tension
-                    if (
-                        not on
-                        and phrase_end_window
-                        and motif != "A"
-                        and gravity < 0.7
-                    ):
+                    if not on and phrase_end_window and motif != "A" and gravity < 0.7:
                         if structural_draw() < subdivision_chance * 0.9:
                             on, role, accent = True, EventRole.TRANSITION, 0.34 + 0.22 * tension
                     if not on and local in style_rhythm.reinforced_hat_ticks:
@@ -365,11 +387,7 @@ def generate_pattern(
                     # skeleton: it can leave a deliberate rest, add a legal
                     # 16th answer or move the accent contour without changing
                     # the meter or the selected style's core role.
-                    if (
-                        on
-                        and eighth_index in hat_variant.omit_eighths
-                        and role != EventRole.ANCHOR
-                    ):
+                    if on and eighth_index in hat_variant.omit_eighths and role != EventRole.ANCHOR:
                         on = False
                     if (
                         not on
@@ -396,8 +414,8 @@ def generate_pattern(
                         and hat_style.linear_bias > 0
                         and role != EventRole.ANCHOR
                     ):
-                        linear_space = (
-                            0.03 + 0.26 * hat_style.linear_bias * (0.45 + 0.55 * variation_scale)
+                        linear_space = 0.03 + 0.26 * hat_style.linear_bias * (
+                            0.45 + 0.55 * variation_scale
                         )
                         if structural_draw() < linear_space:
                             on = False
@@ -569,9 +587,7 @@ def generate_pattern(
                     )
                     next_local = local + step_tick
                     spine_tick = PPQ // (3 if triplet_grid else 2)
-                    lead_into_spine = (
-                        next_local < meter.bar_ticks and next_local % spine_tick == 0
-                    )
+                    lead_into_spine = next_local < meter.bar_ticks and next_local % spine_tick == 0
                     lead_into_snare = any(
                         event.instrument == InstrumentID.SNARE
                         and event.grid_tick == tick + step_tick
@@ -579,28 +595,25 @@ def generate_pattern(
                     )
                     phrase_exit = slot >= steps - min(3, carrier_subdivisions)
                     open_chance = (
-                        0.03
-                        + 0.22 * dna.variation
-                        + 0.16 * dna.surprise
-                        + 0.18 * dna.motor_affordance
-                        + 0.24 * dna.interlock
-                        + 0.12 * tension
-                        + 0.42 * hat_style.open_bias
-                    ) * (1.08 - 0.45 * dna.hypnotic) * hat_variant.open_scale
+                        (
+                            0.03
+                            + 0.22 * dna.variation
+                            + 0.16 * dna.surprise
+                            + 0.18 * dna.motor_affordance
+                            + 0.24 * dna.interlock
+                            + 0.12 * tension
+                            + 0.42 * hat_style.open_bias
+                        )
+                        * (1.08 - 0.45 * dna.hypnotic)
+                        * hat_variant.open_scale
+                    )
                     eighth_index = local // (PPQ // 2) if local % (PPQ // 2) == 0 else None
                     if eighth_index in hat_variant.open_eighths:
                         open_chance *= 1.65
-                    two_bar_lift = (
-                        hat_style.two_bar_variation
-                        and bar % 2 == 1
-                        and phrase_exit
-                    )
-                    open_can_replace_closed = (
-                        hat_style.open_replaces_closed
-                        or (
-                            hat_style.open_bias >= 0.45
-                            and (phrase_exit or local == rhythm_figure.turnaround_tick)
-                        )
+                    two_bar_lift = hat_style.two_bar_variation and bar % 2 == 1 and phrase_exit
+                    open_can_replace_closed = hat_style.open_replaces_closed or (
+                        hat_style.open_bias >= 0.45
+                        and (phrase_exit or local == rhythm_figure.turnaround_tick)
                     )
                     on = (
                         (not closed_here or open_can_replace_closed)

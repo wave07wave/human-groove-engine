@@ -2,6 +2,7 @@ from conftest import intent, meter
 
 from app.analysis.listener import analyze_pattern
 from app.audio.render_analysis import (
+    _open_hat_choke_seconds,
     analyze_reference_render,
     available_render_profiles,
     load_render_profile,
@@ -67,6 +68,38 @@ def test_low_end_collision_responds_to_performed_overlap():
     separated_analysis = analyze_reference_render(separated)
     assert overlap_analysis.low_end_collision_applicable
     assert overlap_analysis.low_end_collision > separated_analysis.low_end_collision
+
+
+def test_reference_render_tracks_open_hat_chokes():
+    source = pattern(bars=1)
+    kick = next(event for event in source.events if event.instrument == InstrumentID.KICK)
+    open_hat = kick.model_copy(
+        update={
+            "event_id": "open-long",
+            "instrument": InstrumentID.OPEN_HAT,
+            "grid_tick": 0,
+            "structural_offset_tick": 0,
+            "micro_offset_us": 0,
+            "duration_tick": 1_920,
+            "pitch": 46,
+            "choke_group": "hihat",
+        }
+    )
+    closed_hat = kick.model_copy(
+        update={
+            "event_id": "closed-choke",
+            "instrument": InstrumentID.CLOSED_HAT,
+            "grid_tick": 480,
+            "structural_offset_tick": 0,
+            "micro_offset_us": 0,
+            "duration_tick": 120,
+            "pitch": 42,
+            "choke_group": "hihat",
+        }
+    )
+    source.events = [open_hat, closed_hat]
+
+    assert _open_hat_choke_seconds(source) == {"open-long": 0.3}
 
 
 def test_long_form_analysis_samples_the_complete_phrase():

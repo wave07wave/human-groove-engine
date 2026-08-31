@@ -69,4 +69,41 @@ it('lets the player choose a bolder generation width', async () => {
 
   await waitFor(() => expect(mocks.generate).toHaveBeenCalled())
   expect(mocks.generate.mock.calls[0][0].intent.target_dna).toMatchObject({ variation: .63, surprise: .55 })
+  expect(mocks.generate.mock.calls[0][0].candidate_strategy).toBe('explore')
+})
+
+it('carries an adventurous width into Bass phrasing and the joint complexity budget', async () => {
+  mocks.bassPresets.mockResolvedValue({
+    built_in: {
+      Supportive: {
+        target: {
+          variation: .3,
+          phrase_development: .4,
+          syncopation: .3,
+          melodic_motion: .3,
+          density: .4,
+          silence: .3,
+        },
+      },
+    },
+    user: {},
+  })
+  render(<QuickComposer groove={null} bass={null} onReady={vi.fn()} onOpenDetails={vi.fn()} />)
+
+  fireEvent.change(await screen.findByLabelText('パターンの幅'), {
+    target: { value: 'adventurous' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'まとめて作成' }))
+
+  await waitFor(() => expect(mocks.jointGenerate).toHaveBeenCalledTimes(1))
+  const [, bassRequest, mode, complexityBudget, bassShare] = mocks.jointGenerate.mock.calls[0]
+  expect(bassRequest.intent.target.variation).toBeCloseTo(.54)
+  expect(bassRequest.intent.target.phrase_development).toBeCloseTo(.6)
+  expect(bassRequest.intent.target.syncopation).toBeCloseTo(.44)
+  expect(bassRequest.intent.target.melodic_motion).toBeCloseTo(.42)
+  expect(bassRequest.intent.target.density).toBeCloseTo(.48)
+  expect(bassRequest.intent.target.silence).toBeCloseTo(.24)
+  expect(mode).toBe('follow')
+  expect(complexityBudget).toBe(.78)
+  expect(bassShare).toBe(.67)
 })

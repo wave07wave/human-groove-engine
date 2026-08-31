@@ -56,6 +56,19 @@ def test_unknown_style_does_not_impose_a_hidden_genre_pattern() -> None:
     assert not profile.reinforced_hat_ticks
 
 
+@pytest.mark.parametrize("subdivisions", (2, 3, 4, 6, 8))
+def test_style_landmarks_never_reference_a_position_missing_from_the_selected_grid(
+    subdivisions: int,
+) -> None:
+    meter = MeterDefinition.from_name("4/4").model_copy(
+        update={"subdivisions_per_quarter": subdivisions}
+    )
+    for style in ("House", "Hip Hop", "Rock"):
+        profile = style_rhythm_profile(style, meter)
+        assert all(tick % meter.subdivision_tick == 0 for tick in profile.forced_kick_ticks)
+        assert all(tick % meter.subdivision_tick == 0 for tick in profile.reinforced_hat_ticks)
+
+
 def test_declared_style_hat_languages_create_distinct_safe_shapes() -> None:
     meter = MeterDefinition.from_name("4/4")
     styles = ("Funk", "Hip Hop", "House", "Rock")
@@ -190,6 +203,29 @@ def test_kick_and_snare_vocabulary_varies_with_the_phrase() -> None:
     assert len(kick_snare_shapes) >= 8
     compound_variants = style_drum_variants("Funk", MeterDefinition.from_name("6/8"))
     assert compound_variants[0].variant_id == "neutral-drum-carrier"
+
+
+def test_kit_vocabulary_keeps_a_shared_family_but_is_not_limited_to_four_fixed_pairs() -> None:
+    meter = MeterDefinition.from_name("4/4")
+    patterns = [
+        generate_pattern(
+            bpm=118,
+            bars=4,
+            meter=meter,
+            intent=PRESETS["Funk"],
+            seed=seed,
+            style="Funk",
+            performance_mode="rule",
+        )
+        for seed in range(40, 64)
+    ]
+    kit_pairs = {
+        pair
+        for pattern in patterns
+        for pair in zip(pattern.metadata.hat_variant_ids, pattern.metadata.drum_variant_ids)
+    }
+
+    assert len(kit_pairs) > 4
 
 
 def test_phrase_arrangements_create_four_bar_narratives() -> None:

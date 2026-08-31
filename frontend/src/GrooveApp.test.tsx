@@ -22,7 +22,7 @@ const groove = {
   meter: { numerator: 4, denominator: 4, grouping: [2, 2], subdivisions_per_quarter: 4 },
   events: [{ event_id: 'kick-1', instrument: 'kick', grid_tick: 0, structural_offset_tick: 0, micro_offset_us: 0, duration_tick: 180, velocity: 100, pitch: 36, primary_role: 'anchor', role_tags: [], accent: .9, timbre_variant: null, duration_style: 'medium', choke_group: null, locked: false, origin: 'generated' }],
   intent,
-  metadata: { engine_version: '0.10.0', analysis_version: '1.4', schema_version: '1.0', preset_version: '1.0', rng_algorithm: 'PCG64DXSM', master_seed: 42, style: 'Balanced', performance_model: 'rule-pocket-v1', performance_model_version: '1.0.0', render_profile: 'studio-tight-v1', preference_guided: false, preference_guidance_strength: 0 },
+  metadata: { engine_version: '0.11.0', analysis_version: '1.5', schema_version: '1.0', preset_version: '1.0', rng_algorithm: 'PCG64DXSM', master_seed: 42, style: 'Balanced', performance_model: 'rule-pocket-v1', performance_model_version: '1.0.0', render_profile: 'studio-tight-v1', preference_guided: false, preference_guidance_strength: 0, embodied_operator_arm: 'baseline', knowledge_pack_id: 'neutral-v1', knowledge_pack_version: '1.0', hat_language_profile: 'neutral-hat-v1' },
   analysis: null, instrument_locks: [], bar_locks: [],
 } as GroovePattern
 
@@ -81,6 +81,62 @@ it('marks a candidate created by preference-guided search', async () => {
   fireEvent.click(await screen.findByRole('button', { name: 'Grooveを作成' }))
 
   expect(await screen.findByText('好み探索 · 1 events')).toBeTruthy()
+})
+
+it('keeps an Easy-mode pattern settings intact when opening detailed editing', async () => {
+  const requests: GenerateRequest[] = []
+  const externalIntent = {
+    ...intent,
+    target_dna: { ...intent.target_dna, density: .84, variation: .72 },
+  }
+  const external = {
+    ...groove,
+    pattern_id: 'easy-to-detail',
+    name: 'Easy mode handoff',
+    bpm: 126,
+    bars: 4,
+    meter: { numerator: 3, denominator: 4, grouping: [2, 2, 2], subdivisions_per_quarter: 3 },
+    intent: externalIntent,
+    metadata: {
+      ...groove.metadata,
+      style: 'House',
+      performance_model: 'rule-pocket-v1',
+      render_profile: 'warm-pocket-v1',
+    },
+  } as GroovePattern
+  vi.stubGlobal('fetch', vi.fn((input: string | URL | Request, init?: RequestInit) => {
+    const url = String(input)
+    if (url === '/api/v1/presets') {
+      return Promise.resolve({ ok: true, json: async () => ({ built_in: { Balanced: intent, House: intent }, user: {} }) } as Response)
+    }
+    if (url === '/api/v1/generate') {
+      requests.push(JSON.parse(String(init?.body)) as GenerateRequest)
+      return Promise.resolve({ ok: true, json: async () => ({ candidates: [external] }) } as Response)
+    }
+    return Promise.reject(new Error('not needed in this test'))
+  }))
+
+  render(<GrooveApp externalPattern={external} />)
+  await screen.findByText('Easy mode handoff')
+  expect((screen.getByLabelText('BPM') as HTMLInputElement).value).toBe('126')
+  expect((screen.getByLabelText('小節数') as HTMLSelectElement).value).toBe('4')
+  expect((screen.getByLabelText('拍子') as HTMLSelectElement).value).toBe('3/4')
+  expect((screen.getByLabelText('グリッド') as HTMLSelectElement).value).toBe('3')
+  expect((screen.getByLabelText('スタイル') as HTMLSelectElement).value).toBe('House')
+  expect((screen.getByLabelText('演奏感') as HTMLSelectElement).value).toBe('rule')
+  expect((screen.getByLabelText('ドラム音色') as HTMLSelectElement).value).toBe('warm-pocket-v1')
+
+  fireEvent.click(screen.getByRole('button', { name: 'Grooveを作成' }))
+  await waitFor(() => expect(requests).toHaveLength(1))
+  expect(requests[0]).toMatchObject({
+    bpm: 126,
+    bars: 4,
+    meter: { numerator: 3, denominator: 4, subdivisions_per_quarter: 3 },
+    preset: 'House',
+    performance_mode: 'rule',
+    render_profile: 'warm-pocket-v1',
+    intent: { target_dna: { density: .84, variation: .72 } },
+  })
 })
 
 it('ignores an older evaluation response that arrives after a newer edit', async () => {

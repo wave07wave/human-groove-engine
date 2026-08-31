@@ -109,6 +109,17 @@ _PACKS = {
 }
 
 
+def _supports_binary_four_four_vocabulary(meter: MeterDefinition) -> bool:
+    """Only apply 16th/offbeat templates when those positions are real grid slots."""
+    return (meter.numerator, meter.denominator) == (4, 4) and (
+        meter.subdivisions_per_quarter in (4, 8, 16)
+    )
+
+
+def _legal_grid_ticks(meter: MeterDefinition, ticks: tuple[int, ...]) -> tuple[int, ...]:
+    return tuple(tick for tick in ticks if tick % meter.subdivision_tick == 0)
+
+
 def style_knowledge_pack(style: str, meter: MeterDefinition) -> StyleKnowledgePack:
     pack = _PACKS.get(style)
     if pack and meter.denominator in pack.meter_scope:
@@ -131,29 +142,31 @@ def style_rhythm_profile(style: str, meter: MeterDefinition) -> StyleRhythmProfi
     offbeats = tuple(tick + PPQ // 2 for tick in beats if tick + PPQ // 2 < meter.bar_ticks)
     if style == "House":
         return StyleRhythmProfile(
-            forced_kick_ticks=beats,
-            reinforced_hat_ticks=offbeats,
-            hat_probability=1.0,
+            forced_kick_ticks=_legal_grid_ticks(meter, beats),
+            reinforced_hat_ticks=_legal_grid_ticks(meter, offbeats),
+            hat_probability=1.0 if _legal_grid_ticks(meter, offbeats) else 0.0,
         )
     if style == "Rock":
         return StyleRhythmProfile(
-            forced_kick_ticks=tuple(tick for tick in (0, 2 * PPQ) if tick < meter.bar_ticks),
-            reinforced_hat_ticks=eighths,
-            hat_probability=1.0,
+            forced_kick_ticks=_legal_grid_ticks(
+                meter, tuple(tick for tick in (0, 2 * PPQ) if tick < meter.bar_ticks)
+            ),
+            reinforced_hat_ticks=_legal_grid_ticks(meter, eighths),
+            hat_probability=1.0 if _legal_grid_ticks(meter, eighths) else 0.0,
         )
     if style == "Hip Hop":
         kick_ticks = tuple(tick for tick in (0, PPQ + PPQ // 2, 3 * PPQ) if tick < meter.bar_ticks)
         return StyleRhythmProfile(
-            forced_kick_ticks=kick_ticks,
-            reinforced_hat_ticks=eighths,
-            hat_probability=0.58,
+            forced_kick_ticks=_legal_grid_ticks(meter, kick_ticks),
+            reinforced_hat_ticks=_legal_grid_ticks(meter, eighths),
+            hat_probability=0.58 if _legal_grid_ticks(meter, eighths) else 0.0,
         )
     return StyleRhythmProfile()
 
 
 def style_hat_profile(style: str, meter: MeterDefinition) -> HatStyleProfile:
     """Return the style's rhythmic hat role when the pack supports the meter."""
-    if (meter.numerator, meter.denominator) != (4, 4):
+    if not _supports_binary_four_four_vocabulary(meter):
         return HatStyleProfile()
     if style == "Funk":
         return HatStyleProfile(
@@ -206,7 +219,7 @@ def style_hat_profile(style: str, meter: MeterDefinition) -> HatStyleProfile:
 
 def style_hat_variants(style: str, meter: MeterDefinition) -> tuple[HatPatternVariant, ...]:
     """Return several coherent vocabulary choices instead of one fixed loop."""
-    if (meter.numerator, meter.denominator) != (4, 4):
+    if not _supports_binary_four_four_vocabulary(meter):
         return (HatPatternVariant("neutral-carrier"),)
     if style == "Funk":
         return (
@@ -342,7 +355,7 @@ def style_hat_variants(style: str, meter: MeterDefinition) -> tuple[HatPatternVa
 
 def style_drum_variants(style: str, meter: MeterDefinition) -> tuple[DrumPatternVariant, ...]:
     """Return kick/snare cells paired by index with the hat vocabularies."""
-    if (meter.numerator, meter.denominator) != (4, 4):
+    if not _supports_binary_four_four_vocabulary(meter):
         return (DrumPatternVariant("neutral-drum-carrier"),)
     if style == "Funk":
         return (
@@ -461,7 +474,7 @@ def style_drum_variants(style: str, meter: MeterDefinition) -> tuple[DrumPattern
 
 def style_phrase_arrangements(style: str, meter: MeterDefinition) -> tuple[PhraseArrangement, ...]:
     """Offer several 4-bar narratives, without changing the meter's anchors."""
-    if (meter.numerator, meter.denominator) != (4, 4):
+    if not _supports_binary_four_four_vocabulary(meter):
         return (PhraseArrangement("neutral-phrase", (0,), (1.0,)),)
     if style == "Funk":
         return (

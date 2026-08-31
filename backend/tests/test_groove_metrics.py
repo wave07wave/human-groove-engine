@@ -2,6 +2,7 @@ import pytest
 from conftest import intent, meter
 
 from app.analysis.metrics import (
+    measure_interlock,
     measure_omission,
     measure_phrase_development,
     measure_repetition,
@@ -96,3 +97,64 @@ def test_phrase_development_detects_an_energy_arch_not_flat_loudness():
     arch = measure_phrase_development(with_velocities([40, 112, 112, 40]))
     assert flat == 0
     assert arch > 0.8
+
+
+def test_interlock_rewards_drum_call_and_response_not_an_internal_bass_placeholder():
+    source = _pattern()
+    template = source.events[0]
+    kicks = [
+        _event(template, event_id=f"kick-{bar}", bar=bar, local=0, instrument=InstrumentID.KICK)
+        for bar in range(4)
+    ]
+    snares = [
+        _event(
+            template, event_id=f"snare-{bar}", bar=bar, local=2 * 960, instrument=InstrumentID.SNARE
+        )
+        for bar in range(4)
+    ]
+    responsive_hats = [
+        _event(
+            template,
+            event_id=f"reply-{bar}",
+            bar=bar,
+            local=240,
+            instrument=InstrumentID.CLOSED_HAT,
+        )
+        for bar in range(4)
+    ] + [
+        _event(
+            template,
+            event_id=f"pickup-{bar}",
+            bar=bar,
+            local=2 * 960 - 240,
+            instrument=InstrumentID.OPEN_HAT,
+        )
+        for bar in range(4)
+    ]
+    unrelated_hats = [
+        _event(
+            template,
+            event_id=f"unrelated-{bar}-{index}",
+            bar=bar,
+            local=local,
+            instrument=InstrumentID.CLOSED_HAT,
+        )
+        for bar in range(4)
+        for index, local in enumerate((480, 1_440))
+    ]
+    responsive = source.model_copy(update={"events": kicks + snares + responsive_hats})
+    unrelated = source.model_copy(update={"events": kicks + snares + unrelated_hats})
+    with_internal_bass = responsive.model_copy(
+        update={
+            "events": responsive.events
+            + [
+                _event(
+                    template, event_id=f"bass-{bar}", bar=bar, local=0, instrument=InstrumentID.BASS
+                )
+                for bar in range(4)
+            ]
+        }
+    )
+
+    assert measure_interlock(responsive) > measure_interlock(unrelated)
+    assert measure_interlock(with_internal_bass) == measure_interlock(responsive)

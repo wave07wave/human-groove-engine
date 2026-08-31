@@ -11,18 +11,49 @@ from app.models.pattern import GroovePattern
 from app.models.preference import GroovePreferenceSummary
 from app.preference import PREFERENCE_FEATURES, blended_candidate_score, personal_preference_score
 from app.preference_guidance import PreferenceGuidance, guided_feature_values
+from app.random.seeds import HierarchicalRNG
 
 from .generator import generate_pattern
 
 
 def pattern_distance(a: GroovePattern, b: GroovePattern) -> float:
-    left = {(e.instrument.value, e.grid_tick, e.primary_role.value) for e in a.events}
-    right = {(e.instrument.value, e.grid_tick, e.primary_role.value) for e in b.events}
-    event_distance = 1 - len(left & right) / max(1, len(left | right))
+    # Candidate diversity must reflect audible material, not explanatory role
+    # tags.  The latter are useful UI metadata but can change without changing
+    # a single sounding hit.
+    left_onsets = {(e.instrument.value, e.performed_tick) for e in a.events}
+    right_onsets = {(e.instrument.value, e.performed_tick) for e in b.events}
+    onset_distance = 1 - len(left_onsets & right_onsets) / max(1, len(left_onsets | right_onsets))
+    left_details = {
+        (
+            e.instrument.value,
+            e.performed_tick,
+            round(e.micro_offset_us / 1_000),
+            e.velocity // 8,
+            e.duration_tick // 60,
+            e.pitch,
+            e.timbre_variant,
+        )
+        for e in a.events
+    }
+    right_details = {
+        (
+            e.instrument.value,
+            e.performed_tick,
+            round(e.micro_offset_us / 1_000),
+            e.velocity // 8,
+            e.duration_tick // 60,
+            e.pitch,
+            e.timbre_variant,
+        )
+        for e in b.events
+    }
+    detail_distance = 1 - len(left_details & right_details) / max(
+        1, len(left_details | right_details)
+    )
     adna = a.analysis.measured_dna.model_dump() if a.analysis else {}
     bdna = b.analysis.measured_dna.model_dump() if b.analysis else {}
     dna_distance = sum(abs(adna[k] - bdna[k]) for k in adna) / max(1, len(adna))
-    return 0.75 * event_distance + 0.25 * dna_distance
+    return 0.6 * onset_distance + 0.25 * detail_distance + 0.15 * dna_distance
 
 
 def preference_guided_groove_intent(
@@ -59,12 +90,7 @@ def generate_candidate_pool(
     pool: list[GroovePattern] = []
     for candidate in range(pool_size):
         use_guidance = guidance.active and candidate % 2 == 1
-        # Stratify the research candidates around low / medium / high challenge.
-        # These are exploration arms, not a claim that one level suits everyone.
         candidate_intent = (guided_intent if use_guidance else intent).model_copy(deep=True)
-        challenge_arm = (0.24, 0.5, 0.76)[candidate % 3]
-        candidate_intent.embodied.challenge = challenge_arm
-        candidate_intent.embodied.renewal = (0.3, 0.58, 0.78)[candidate % 3]
         pattern = generate_pattern(
             bpm=bpm,
             bars=bars,
@@ -101,6 +127,7 @@ def generate_candidates(
     performance_mode: str = "auto",
     render_profile: str = "studio-tight-v1",
     preset: str = "Balanced",
+    candidate_strategy: str = "quality",
     preference: GroovePreferenceSummary | None = None,
     motor_tempo_profile: MotorTempoProfile | None = None,
     embodied_operator_scores: dict[str, float] | None = None,
@@ -176,7 +203,23 @@ def generate_candidates(
     frontier.sort(key=selection_score, reverse=True)
     remainder.sort(key=selection_score, reverse=True)
     pool = frontier + remainder
-    selected = [pool.pop(0)]
+    # Preview generation normally returns the strongest candidate.  The easy
+    # composer may request a reproducible, quality-bounded alternative so each
+    # click can reveal a different musical idea instead of always returning
+    # the safest top-ranked loop.
+    if candidate_strategy == "explore" and len(pool) > 1:
+        best_score = selection_score(pool[0])
+        quality_band = [
+            item
+            for item in pool
+            if selection_score(item) >= best_score - max(0.015, best_score * 0.045)
+        ]
+        rng = HierarchicalRNG(seed).stream("candidate-selection", preset, mode, candidate_strategy)
+        primary = quality_band[int(rng.integers(len(quality_band)))]
+    else:
+        primary = pool[0]
+    selected = [primary]
+    pool.remove(primary)
     while pool and len(selected) < count:
         candidate = max(
             pool,

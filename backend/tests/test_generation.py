@@ -10,7 +10,7 @@ from app.engine.optimizer import (
     pattern_distance,
     preference_guided_groove_intent,
 )
-from app.models.event import InstrumentID
+from app.models.event import EventRole, InstrumentID
 from app.models.meter import MeterDefinition
 from app.models.preference import GroovePreferenceRange, GroovePreferenceSummary
 
@@ -82,6 +82,104 @@ def test_partial_regeneration_preserves_other_instruments():
     assert before == after
 
 
+def test_hi_hat_regeneration_keeps_open_and_closed_articulations_exclusive():
+    meter_definition = MeterDefinition.from_name("4/4")
+    for seed in range(12):
+        original = generate_pattern(
+            bpm=124,
+            bars=4,
+            meter=meter_definition,
+            intent=intent(density=0.75, variation=0.8),
+            seed=seed,
+            style="House",
+            performance_mode="rule",
+        )
+        changed = regenerate_selected(original, {InstrumentID.CLOSED_HAT}, set(range(4)))
+        closed = {
+            event.grid_tick
+            for event in changed.events
+            if event.instrument == InstrumentID.CLOSED_HAT
+        }
+        opened = {
+            event.grid_tick for event in changed.events if event.instrument == InstrumentID.OPEN_HAT
+        }
+        assert not closed & opened
+
+
+def test_partial_regeneration_updates_phrase_metadata_only_for_changed_bars():
+    original = generate_pattern(
+        bpm=110,
+        bars=4,
+        meter=meter(),
+        intent=intent(variation=0.8),
+        seed=201,
+        style="Funk",
+        performance_mode="rule",
+    )
+    fresh = generate_pattern(
+        bpm=110,
+        bars=4,
+        meter=meter(),
+        intent=original.intent,
+        seed=202,
+        style="Funk",
+        performance_mode="rule",
+    )
+    changed = regenerate_selected(original, {InstrumentID.KICK}, {1, 3})
+
+    for attribute in ("hat_variant_ids", "drum_variant_ids", "phrase_arrangement_ids"):
+        before = getattr(original.metadata, attribute)
+        after = getattr(changed.metadata, attribute)
+        replacement = getattr(fresh.metadata, attribute)
+        assert after[0] == before[0]
+        assert after[2] == before[2]
+        assert after[1] == replacement[1]
+        assert after[3] == replacement[3]
+
+
+def test_triplet_grid_uses_meter_safe_neutral_style_language():
+    triplet_meter = MeterDefinition(
+        numerator=4,
+        denominator=4,
+        grouping=[2, 2],
+        subdivisions_per_quarter=3,
+    )
+    house = generate_pattern(
+        bpm=124,
+        bars=2,
+        meter=triplet_meter,
+        intent=intent(density=0.7, variation=0.7),
+        seed=2025,
+        style="House",
+        performance_mode="rule",
+    )
+
+    assert house.metadata.hat_language_profile == "neutral-hat-v1"
+    assert set(house.metadata.hat_variant_ids) == {"neutral-carrier"}
+    assert all(event.grid_tick % triplet_meter.subdivision_tick == 0 for event in house.events)
+
+
+def test_eighth_grid_uses_meter_safe_neutral_style_language():
+    eighth_meter = MeterDefinition(
+        numerator=4,
+        denominator=4,
+        grouping=[2, 2],
+        subdivisions_per_quarter=2,
+    )
+    house = generate_pattern(
+        bpm=124,
+        bars=2,
+        meter=eighth_meter,
+        intent=intent(density=0.7, variation=0.7),
+        seed=2026,
+        style="House",
+        performance_mode="rule",
+    )
+
+    assert house.metadata.hat_language_profile == "neutral-hat-v1"
+    assert set(house.metadata.hat_variant_ids) == {"neutral-carrier"}
+
+
 def test_event_and_instrument_locks_are_invariant():
     original = make()
     original.instrument_locks.add(InstrumentID.KICK)
@@ -102,6 +200,41 @@ def test_optimizer_returns_four_meaningfully_distinct_candidates():
     assert all(item.analysis is not None for item in result)
 
 
+def test_explore_strategy_selects_a_reproducible_quality_bounded_alternative():
+    kwargs = {
+        "bpm": 112,
+        "bars": 4,
+        "meter": meter(),
+        "intent": intent(),
+        "seed": 43,
+        "count": 1,
+        "performance_mode": "rule",
+        "render_profile": "off",
+    }
+    quality = generate_candidates(**kwargs)
+    explored = generate_candidates(**kwargs, candidate_strategy="explore")
+    repeated = generate_candidates(**kwargs, candidate_strategy="explore")
+
+    assert quality[0].pattern_id != explored[0].pattern_id
+    assert [item.model_dump_json() for item in explored] == [
+        item.model_dump_json() for item in repeated
+    ]
+
+
+def test_pattern_distance_ignores_role_only_metadata_changes():
+    original = make()
+    relabeled = original.model_copy(
+        update={
+            "events": [
+                event.model_copy(update={"primary_role": EventRole.DECORATION})
+                for event in original.events
+            ]
+        }
+    )
+
+    assert pattern_distance(original, relabeled) == 0
+
+
 def test_target_and_measured_dna_are_separate_values():
     pattern = make(groove_intent=intent(syncopation=0.95))
     pattern.analysis = analyze_pattern(pattern)
@@ -111,9 +244,7 @@ def test_target_and_measured_dna_are_separate_values():
 
 def test_preference_guidance_moves_only_the_private_search_intent() -> None:
     requested = intent(density=0.1)
-    guided, guidance = preference_guided_groove_intent(
-        requested, strong_groove_preference()
-    )
+    guided, guidance = preference_guided_groove_intent(requested, strong_groove_preference())
 
     assert requested.target_dna.density == 0.1
     assert guided.target_dna.density == pytest.approx(0.2925)
@@ -158,9 +289,7 @@ def test_preference_guided_candidate_pool_is_deterministic() -> None:
 
     left = generate_candidate_pool(**kwargs)
     right = generate_candidate_pool(**kwargs)
-    assert [item.model_dump_json() for item in left] == [
-        item.model_dump_json() for item in right
-    ]
+    assert [item.model_dump_json() for item in left] == [item.model_dump_json() for item in right]
 
 
 @pytest.mark.parametrize("subdivisions", [2, 3, 4, 6, 8])

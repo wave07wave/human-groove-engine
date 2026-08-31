@@ -8,15 +8,17 @@ from app.models.pattern import GroovePattern
 
 
 def phrase_state(bar: int, bars: int) -> str:
-    if bars <= 1:
+    if bars <= 2:
         return "re-entry"
     if bar == 0:
         return "establish"
     if bar == bars - 1:
         return "re-entry"
+    if bar == max(1, (bars - 1) // 2):
+        return "challenge"
     if bar == bars - 2:
         return "release"
-    return "reinforce" if bar % 3 else "challenge"
+    return "reinforce"
 
 
 def apply_embodied_operators(pattern: GroovePattern) -> str:
@@ -32,6 +34,7 @@ def apply_embodied_operators(pattern: GroovePattern) -> str:
     events = list(pattern.events)
     removed: set[str] = set()
     relabeled: dict[str, EventRole] = {}
+    dynamics: dict[str, tuple[int, float]] = {}
     for event in events:
         bar = event.grid_tick // pattern.meter.bar_ticks
         local = event.grid_tick % pattern.meter.bar_ticks
@@ -43,7 +46,17 @@ def apply_embodied_operators(pattern: GroovePattern) -> str:
                 InstrumentID.PERCUSSION,
                 InstrumentID.CLOSED_HAT,
             ):
-                relabeled.setdefault(event.event_id, EventRole.VIOLATION)
+                if event.primary_role != EventRole.VIOLATION:
+                    relabeled.setdefault(event.event_id, EventRole.VIOLATION)
+                # A bounded accent makes the selected challenge audible rather
+                # than merely changing an explanatory role label.
+                dynamics.setdefault(
+                    event.event_id,
+                    (
+                        min(127, event.velocity + round(5 + 12 * strength)),
+                        min(1.0, event.accent + 0.08 + 0.12 * strength),
+                    ),
+                )
         # Release removes ornaments, never the downbeat kick or a recovery event.
         if renewal >= 0.5 and state == "release":
             if (
@@ -56,11 +69,19 @@ def apply_embodied_operators(pattern: GroovePattern) -> str:
             if local not in (0,) and event.primary_role == EventRole.ANCHOR:
                 removed.add(event.event_id)
     pattern.events = [
-        event.model_copy(update={"primary_role": relabeled.get(event.event_id, event.primary_role)})
+        event.model_copy(
+            update={
+                "primary_role": relabeled.get(event.event_id, event.primary_role),
+                "velocity": dynamics.get(event.event_id, (event.velocity, event.accent))[0],
+                "accent": dynamics.get(event.event_id, (event.velocity, event.accent))[1],
+            }
+        )
         for event in events
         if event.event_id not in removed
     ]
     pattern.events.sort(key=lambda event: (event.grid_tick, event.instrument.value, event.event_id))
+    if not removed and not relabeled:
+        return "baseline"
     return (
         "challenge-high"
         if strength >= 0.67

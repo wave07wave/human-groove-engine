@@ -6,6 +6,15 @@ from conftest import intent, meter
 
 from app.engine.generator import generate_pattern
 from app.midi.exporter import export_midi
+from app.models.event import InstrumentID
+
+
+def _absolute_note_messages(track: mido.MidiTrack):
+    absolute = 0
+    for message in track:
+        absolute += message.time
+        if message.type in ("note_on", "note_off"):
+            yield absolute, message
 
 
 @pytest.mark.parametrize(
@@ -39,3 +48,46 @@ def test_midi_type_one_round_trip_and_no_hanging_notes(
                 key = (message.channel, message.note)
                 active[key] = max(0, active.get(key, 0) - 1)
         assert not any(active.values())
+
+
+def test_midi_explicitly_chokes_an_open_hat_with_the_next_hat_hit():
+    pattern = generate_pattern(bpm=120, bars=1, meter=meter(), intent=intent(), seed=91)
+    source = next(event for event in pattern.events if event.instrument == InstrumentID.KICK)
+    open_hat = source.model_copy(
+        update={
+            "event_id": "open-long",
+            "instrument": InstrumentID.OPEN_HAT,
+            "grid_tick": 0,
+            "structural_offset_tick": 0,
+            "micro_offset_us": 0,
+            "duration_tick": 2_000,
+            "pitch": 46,
+            "choke_group": "hihat",
+        }
+    )
+    closed_hat = source.model_copy(
+        update={
+            "event_id": "closed-choke",
+            "instrument": InstrumentID.CLOSED_HAT,
+            "grid_tick": 480,
+            "structural_offset_tick": 0,
+            "micro_offset_us": 0,
+            "duration_tick": 120,
+            "pitch": 42,
+            "choke_group": "hihat",
+        }
+    )
+    pattern.events = [open_hat, closed_hat]
+
+    midi = mido.MidiFile(file=BytesIO(export_midi(pattern)))
+    open_track = next(
+        track
+        for track in midi.tracks
+        if any(message.type == "track_name" and message.name == "open_hat" for message in track)
+    )
+    note_off_tick = next(
+        absolute
+        for absolute, message in _absolute_note_messages(open_track)
+        if message.type == "note_off" and message.note == 46
+    )
+    assert note_off_tick == 480

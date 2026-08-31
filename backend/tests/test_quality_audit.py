@@ -13,6 +13,7 @@ def test_bundled_quality_audit_matches_engine_and_disclaims_perception():
     assert tuple(item.dimension for item in report.controls) == tuple(GrooveDNA.model_fields)
     assert all(item.delta >= item.minimum_delta for item in report.controls)
     assert report.diversity.minimum_distance >= report.diversity.required_minimum_distance
+    assert report.diversity.comparisons > 30  # includes Easy mode's actual top-1 selections
     assert report.determinism.mismatches == 0
     assert report.latency.p95_seconds <= report.latency.maximum_p95_seconds
 

@@ -60,7 +60,8 @@ export async function toggleMixPreview(
     const instrument = event.instrument
     const onset = Math.max(0, tickSeconds(event.grid_tick + event.structural_offset_tick, groove.bpm) + event.micro_offset_us / 1_000_000)
     transport.schedule(time => {
-      drumKit?.trigger(instrument, time, event.velocity / 127, event.event_id)
+      const duration = Math.max(.02, tickSeconds(event.duration_tick, groove.bpm))
+      drumKit?.trigger(instrument, time, event.velocity / 127, event.event_id, duration)
     }, onset)
   }
   for (const event of bassPattern.events) {
