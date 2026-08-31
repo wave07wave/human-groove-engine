@@ -48,6 +48,18 @@ class HatPatternVariant:
 
 
 @dataclass(frozen=True)
+class DrumPatternVariant:
+    """A coordinated kick/snare phrase cell, expressed in 16th indices."""
+
+    variant_id: str
+    kick_add_sixteenths: tuple[int, ...] = ()
+    snare_ghost_sixteenths: tuple[int, ...] = ()
+    snare_transition_sixteenths: tuple[int, ...] = ()
+    kick_weak_scale: float = 1.0
+    snare_ghost_scale: float = 1.0
+
+
+@dataclass(frozen=True)
 class StyleKnowledgePack:
     pack_id: str
     version: str
@@ -315,5 +327,124 @@ def style_hat_variants(style: str, meter: MeterDefinition) -> tuple[HatPatternVa
             accent_eighths=(3, 7),
             subdivision_scale=1.35,
             open_scale=1.25,
+        ),
+    )
+
+
+def style_drum_variants(style: str, meter: MeterDefinition) -> tuple[DrumPatternVariant, ...]:
+    """Return kick/snare cells paired by index with the hat vocabularies."""
+    if (meter.numerator, meter.denominator) != (4, 4):
+        return (DrumPatternVariant("neutral-drum-carrier"),)
+    if style == "Funk":
+        return (
+            DrumPatternVariant("funk-pocket-lock", snare_ghost_sixteenths=(3, 11)),
+            DrumPatternVariant(
+                "funk-answer-kick",
+                kick_add_sixteenths=(3, 10),
+                snare_ghost_sixteenths=(6, 14),
+                kick_weak_scale=1.18,
+            ),
+            DrumPatternVariant(
+                "funk-early-push",
+                kick_add_sixteenths=(6, 13),
+                snare_transition_sixteenths=(15,),
+                kick_weak_scale=1.28,
+                snare_ghost_scale=1.2,
+            ),
+            DrumPatternVariant(
+                "funk-turnaround",
+                kick_add_sixteenths=(10, 14),
+                snare_ghost_sixteenths=(5, 13),
+                snare_transition_sixteenths=(15,),
+                kick_weak_scale=1.34,
+            ),
+        )
+    if style == "Hip Hop":
+        return (
+            DrumPatternVariant("hip-hop-head-nod", kick_add_sixteenths=(6,)),
+            DrumPatternVariant(
+                "hip-hop-late-answer",
+                kick_add_sixteenths=(7, 13),
+                snare_ghost_sixteenths=(14,),
+                kick_weak_scale=1.15,
+            ),
+            DrumPatternVariant(
+                "hip-hop-broken-pocket",
+                kick_add_sixteenths=(5, 11),
+                snare_ghost_sixteenths=(7,),
+                snare_ghost_scale=1.22,
+            ),
+            DrumPatternVariant(
+                "hip-hop-barline-turn",
+                kick_add_sixteenths=(13, 15),
+                snare_transition_sixteenths=(14,),
+                kick_weak_scale=1.28,
+            ),
+        )
+    if style == "House":
+        return (
+            DrumPatternVariant("house-four-floor", snare_ghost_sixteenths=(7, 15)),
+            DrumPatternVariant(
+                "house-pump-answer",
+                kick_add_sixteenths=(6, 14),
+                snare_ghost_sixteenths=(7,),
+                kick_weak_scale=1.14,
+            ),
+            DrumPatternVariant(
+                "house-two-bar-lift",
+                kick_add_sixteenths=(7, 15),
+                snare_transition_sixteenths=(14,),
+                kick_weak_scale=1.2,
+            ),
+            DrumPatternVariant(
+                "house-break-release",
+                kick_add_sixteenths=(5, 13),
+                snare_ghost_sixteenths=(6, 14),
+                snare_transition_sixteenths=(15,),
+                kick_weak_scale=1.25,
+            ),
+        )
+    if style == "Rock":
+        return (
+            DrumPatternVariant("rock-straight-drive", snare_ghost_sixteenths=(7, 15)),
+            DrumPatternVariant(
+                "rock-push-16",
+                kick_add_sixteenths=(3, 10),
+                snare_ghost_sixteenths=(7,),
+                kick_weak_scale=1.16,
+            ),
+            DrumPatternVariant(
+                "rock-chorus-lift",
+                kick_add_sixteenths=(6, 14),
+                snare_transition_sixteenths=(15,),
+                kick_weak_scale=1.22,
+            ),
+            DrumPatternVariant(
+                "rock-turnaround",
+                kick_add_sixteenths=(10, 11, 14),
+                snare_ghost_sixteenths=(13,),
+                snare_transition_sixteenths=(15,),
+                kick_weak_scale=1.3,
+            ),
+        )
+    return (
+        DrumPatternVariant("adaptive-pocket", snare_ghost_sixteenths=(7, 15)),
+        DrumPatternVariant(
+            "adaptive-push",
+            kick_add_sixteenths=(3, 10),
+            snare_ghost_sixteenths=(6, 14),
+            kick_weak_scale=1.15,
+        ),
+        DrumPatternVariant(
+            "adaptive-space-answer",
+            kick_add_sixteenths=(6, 13),
+            snare_ghost_sixteenths=(5, 11),
+            snare_ghost_scale=1.18,
+        ),
+        DrumPatternVariant(
+            "adaptive-lift",
+            kick_add_sixteenths=(10, 14, 15),
+            snare_transition_sixteenths=(13,),
+            kick_weak_scale=1.28,
         ),
     )

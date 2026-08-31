@@ -16,6 +16,7 @@ from .pocket import pocket_for
 from .pulse import metric_gravity, strong_positions
 from .rhythm_language import phrase_rhythm_figure
 from .style_language import (
+    style_drum_variants,
     style_hat_profile,
     style_hat_variants,
     style_knowledge_pack,
@@ -163,17 +164,22 @@ def generate_pattern(
     style_rhythm = style_rhythm_profile(style, meter)
     hat_style = style_hat_profile(style, meter)
     hat_variants = style_hat_variants(style, meter)
+    drum_variants = style_drum_variants(style, meter)
     events: list[GrooveEvent] = []
     hat_variant_ids: list[str] = []
+    drum_variant_ids: list[str] = []
 
     for bar in range(bars):
         bar_start = bar * meter.bar_ticks
         steps = meter.bar_ticks // step_tick
         motif = motif_for_bar(grammar, bar)
         rhythm_figure = phrase_rhythm_figure(meter, motif)
-        hat_variant_rng = hrng.stream("hat-vocabulary", candidate, bar // 2, motif)
-        hat_variant = hat_variants[int(hat_variant_rng.integers(len(hat_variants)))]
+        vocabulary_rng = hrng.stream("kit-vocabulary", candidate, bar // 2, motif)
+        vocabulary_index = int(vocabulary_rng.integers(len(hat_variants)))
+        hat_variant = hat_variants[vocabulary_index]
+        drum_variant = drum_variants[vocabulary_index % len(drum_variants)]
         hat_variant_ids.append(hat_variant.variant_id)
+        drum_variant_ids.append(drum_variant.variant_id)
         variation_scale = dna.variation * (0.25 if motif.startswith("A") else 0.8)
         tension = tensions[bar]
         for instrument in InstrumentID:
@@ -407,6 +413,7 @@ def generate_pattern(
                         if structural_draw() < release_chance:
                             on = False
                 elif instrument == InstrumentID.KICK:
+                    sixteenth_index = local // (PPQ // 4) if local % (PPQ // 4) == 0 else None
                     anchor_chance = max(
                         0.08,
                         min(
@@ -431,7 +438,11 @@ def generate_pattern(
                         + 0.26 * dna.metric_ambiguity
                         + 0.58 * motor_energy
                     ) * (0.75 + 0.5 * tension)
-                    weak_chance *= (1.08 - 0.5 * dna.hypnotic) * (1.12 - 0.3 * dna.low_end_anchor)
+                    weak_chance *= (
+                        (1.08 - 0.5 * dna.hypnotic)
+                        * (1.12 - 0.3 * dna.low_end_anchor)
+                        * drum_variant.kick_weak_scale
+                    )
                     if (
                         not on
                         and gravity < 0.5
@@ -450,6 +461,17 @@ def generate_pattern(
                                 EventRole.VIOLATION,
                                 0.52 + 0.3 * dna.syncopation,
                             )
+                    if (
+                        not on
+                        and sixteenth_index in drum_variant.kick_add_sixteenths
+                        and gravity < 0.72
+                        and structural_draw() < 0.48 + 0.32 * dna.density
+                    ):
+                        on, role, accent = (
+                            True,
+                            EventRole.CONFIRMATION,
+                            0.48 + 0.22 * dna.low_end_anchor,
+                        )
                 elif instrument == InstrumentID.SNARE:
                     if meter.denominator == 8:
                         targets = strong[1::2] or strong[-1:]
@@ -458,9 +480,28 @@ def generate_pattern(
                     on = local in targets
                     if on:
                         role, accent = EventRole.ANCHOR, 0.9
-                    ghost_chance = dna.ghost_density * 0.18
+                    sixteenth_index = local // (PPQ // 4) if local % (PPQ // 4) == 0 else None
+                    kick_here = any(
+                        event.instrument == InstrumentID.KICK and event.grid_tick == tick
+                        for event in events
+                    )
+                    ghost_chance = dna.ghost_density * 0.18 * drum_variant.snare_ghost_scale
                     if not on and gravity < 0.5 and structural_draw() < ghost_chance / 2:
                         on, role, accent = True, EventRole.GHOST, 0.2
+                    if (
+                        not on
+                        and not kick_here
+                        and sixteenth_index in drum_variant.snare_ghost_sixteenths
+                        and structural_draw() < 0.34 + 0.34 * dna.ghost_density
+                    ):
+                        on, role, accent = True, EventRole.GHOST, 0.24 + 0.14 * tension
+                    if (
+                        not on
+                        and not kick_here
+                        and sixteenth_index in drum_variant.snare_transition_sixteenths
+                        and structural_draw() < 0.4 + 0.28 * tension
+                    ):
+                        on, role, accent = True, EventRole.TRANSITION, 0.36 + 0.2 * tension
                 elif instrument == InstrumentID.BASS:
                     kick_here = any(
                         e.instrument == InstrumentID.KICK and e.grid_tick == tick for e in events
@@ -643,6 +684,7 @@ def generate_pattern(
             knowledge_pack_version=pack.version,
             hat_language_profile=hat_style.profile_id,
             hat_variant_ids=hat_variant_ids,
+            drum_variant_ids=drum_variant_ids,
         ),
     )
     pattern.metadata.embodied_operator_arm = apply_embodied_operators(pattern)

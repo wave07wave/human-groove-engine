@@ -3,7 +3,12 @@ from __future__ import annotations
 import pytest
 
 from app.engine.generator import generate_pattern
-from app.engine.style_language import style_hat_profile, style_hat_variants, style_rhythm_profile
+from app.engine.style_language import (
+    style_drum_variants,
+    style_hat_profile,
+    style_hat_variants,
+    style_rhythm_profile,
+)
 from app.models.event import InstrumentID
 from app.models.meter import MeterDefinition
 from app.presets import PRESETS
@@ -148,3 +153,39 @@ def test_balanced_generation_uses_multiple_vocabulary_shapes() -> None:
     sequences = {tuple(pattern.metadata.hat_variant_ids) for pattern in patterns}
 
     assert len(sequences) >= 8
+
+
+def test_kick_and_snare_vocabulary_varies_with_the_phrase() -> None:
+    meter = MeterDefinition.from_name("4/4")
+    for style in ("Funk", "Hip Hop", "House", "Rock", "Balanced"):
+        variants = style_drum_variants(style, meter)
+        assert len(variants) == 4
+        assert len({variant.variant_id for variant in variants}) == 4
+
+    patterns = [
+        generate_pattern(
+            bpm=112,
+            bars=4,
+            meter=meter,
+            intent=PRESETS["Funk"],
+            seed=seed,
+            style="Funk",
+            performance_mode="rule",
+        )
+        for seed in range(12)
+    ]
+    drum_sequences = {tuple(pattern.metadata.drum_variant_ids) for pattern in patterns}
+    kick_snare_shapes = {
+        tuple(
+            (event.instrument.value, event.grid_tick % meter.bar_ticks, event.primary_role.value)
+            for event in pattern.events
+            if event.instrument in {InstrumentID.KICK, InstrumentID.SNARE}
+        )
+        for pattern in patterns
+    }
+
+    assert all(len(pattern.metadata.drum_variant_ids) == pattern.bars for pattern in patterns)
+    assert len(drum_sequences) >= 8
+    assert len(kick_snare_shapes) >= 8
+    compound_variants = style_drum_variants("Funk", MeterDefinition.from_name("6/8"))
+    assert compound_variants[0].variant_id == "neutral-drum-carrier"
