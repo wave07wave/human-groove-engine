@@ -60,6 +60,15 @@ class DrumPatternVariant:
 
 
 @dataclass(frozen=True)
+class PhraseArrangement:
+    """A four-bar contour that steers the coordinated kit vocabularies."""
+
+    arrangement_id: str
+    vocabulary_offsets: tuple[int, ...]
+    tension_scales: tuple[float, ...]
+
+
+@dataclass(frozen=True)
 class StyleKnowledgePack:
     pack_id: str
     version: str
@@ -447,4 +456,44 @@ def style_drum_variants(style: str, meter: MeterDefinition) -> tuple[DrumPattern
             snare_transition_sixteenths=(13,),
             kick_weak_scale=1.28,
         ),
+    )
+
+
+def style_phrase_arrangements(style: str, meter: MeterDefinition) -> tuple[PhraseArrangement, ...]:
+    """Offer several 4-bar narratives, without changing the meter's anchors."""
+    if (meter.numerator, meter.denominator) != (4, 4):
+        return (PhraseArrangement("neutral-phrase", (0,), (1.0,)),)
+    if style == "Funk":
+        return (
+            PhraseArrangement("funk-pocket-arc", (0, 0, 1, 3), (0.84, 0.94, 1.02, 1.18)),
+            PhraseArrangement("funk-question-answer", (1, 2, 1, 3), (0.88, 1.02, 0.94, 1.2)),
+            PhraseArrangement("funk-early-spark", (2, 0, 1, 3), (1.02, 0.86, 0.98, 1.16)),
+            PhraseArrangement("funk-space-return", (3, 0, 2, 1), (0.8, 1.0, 1.12, 0.92)),
+        )
+    if style == "Hip Hop":
+        return (
+            PhraseArrangement("hip-hop-head-nod", (0, 0, 1, 3), (0.92, 0.94, 1.02, 1.12)),
+            PhraseArrangement("hip-hop-late-reply", (1, 0, 2, 3), (0.86, 0.98, 0.94, 1.18)),
+            PhraseArrangement("hip-hop-broken-return", (2, 1, 0, 3), (1.0, 0.9, 0.96, 1.14)),
+            PhraseArrangement("hip-hop-turnaround", (0, 2, 1, 3), (0.9, 1.02, 0.96, 1.22)),
+        )
+    if style == "House":
+        return (
+            PhraseArrangement("house-lane-lift", (0, 0, 2, 3), (0.92, 0.96, 1.06, 1.2)),
+            PhraseArrangement("house-pump-release", (1, 0, 1, 3), (1.0, 0.9, 1.02, 1.16)),
+            PhraseArrangement("house-two-bar-answer", (0, 2, 0, 3), (0.94, 1.04, 0.96, 1.22)),
+            PhraseArrangement("house-break-reentry", (3, 0, 1, 2), (0.82, 1.04, 1.1, 0.94)),
+        )
+    if style == "Rock":
+        return (
+            PhraseArrangement("rock-drive-lift", (0, 0, 2, 3), (0.94, 0.98, 1.08, 1.2)),
+            PhraseArrangement("rock-push-answer", (1, 2, 0, 3), (1.02, 0.94, 1.0, 1.18)),
+            PhraseArrangement("rock-chorus-rise", (2, 0, 1, 3), (0.98, 0.9, 1.12, 1.22)),
+            PhraseArrangement("rock-break-return", (3, 0, 1, 2), (0.82, 1.04, 1.1, 0.96)),
+        )
+    return (
+        PhraseArrangement("adaptive-steady-lift", (0, 0, 1, 3), (0.9, 0.96, 1.04, 1.18)),
+        PhraseArrangement("adaptive-question-answer", (1, 2, 0, 3), (0.92, 1.04, 0.96, 1.2)),
+        PhraseArrangement("adaptive-delayed-release", (0, 1, 2, 3), (0.86, 0.94, 1.08, 1.22)),
+        PhraseArrangement("adaptive-contrast-return", (3, 0, 2, 1), (0.8, 1.06, 1.12, 0.92)),
     )

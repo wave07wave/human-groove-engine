@@ -20,6 +20,7 @@ from .style_language import (
     style_hat_profile,
     style_hat_variants,
     style_knowledge_pack,
+    style_phrase_arrangements,
     style_rhythm_profile,
 )
 
@@ -165,23 +166,32 @@ def generate_pattern(
     hat_style = style_hat_profile(style, meter)
     hat_variants = style_hat_variants(style, meter)
     drum_variants = style_drum_variants(style, meter)
+    phrase_arrangements = style_phrase_arrangements(style, meter)
     events: list[GrooveEvent] = []
     hat_variant_ids: list[str] = []
     drum_variant_ids: list[str] = []
+    phrase_arrangement_ids: list[str] = []
 
     for bar in range(bars):
         bar_start = bar * meter.bar_ticks
         steps = meter.bar_ticks // step_tick
         motif = motif_for_bar(grammar, bar)
         rhythm_figure = phrase_rhythm_figure(meter, motif)
+        arrangement_rng = hrng.stream("phrase-arrangement", candidate, bar // 4, grammar)
+        arrangement = phrase_arrangements[int(arrangement_rng.integers(len(phrase_arrangements)))]
+        arrangement_slot = bar % len(arrangement.vocabulary_offsets)
         vocabulary_rng = hrng.stream("kit-vocabulary", candidate, bar // 2, motif)
-        vocabulary_index = int(vocabulary_rng.integers(len(hat_variants)))
+        vocabulary_index = (
+            int(vocabulary_rng.integers(len(hat_variants)))
+            + arrangement.vocabulary_offsets[arrangement_slot]
+        ) % len(hat_variants)
         hat_variant = hat_variants[vocabulary_index]
         drum_variant = drum_variants[vocabulary_index % len(drum_variants)]
         hat_variant_ids.append(hat_variant.variant_id)
         drum_variant_ids.append(drum_variant.variant_id)
+        phrase_arrangement_ids.append(arrangement.arrangement_id)
         variation_scale = dna.variation * (0.25 if motif.startswith("A") else 0.8)
-        tension = tensions[bar]
+        tension = min(1.0, tensions[bar] * arrangement.tension_scales[arrangement_slot])
         for instrument in InstrumentID:
             rng = hrng.stream("instrument", candidate, instrument.value, bar)
             stable_rng = hrng.stream("instrument-stable", candidate, instrument.value)
@@ -685,6 +695,7 @@ def generate_pattern(
             hat_language_profile=hat_style.profile_id,
             hat_variant_ids=hat_variant_ids,
             drum_variant_ids=drum_variant_ids,
+            phrase_arrangement_ids=phrase_arrangement_ids,
         ),
     )
     pattern.metadata.embodied_operator_arm = apply_embodied_operators(pattern)

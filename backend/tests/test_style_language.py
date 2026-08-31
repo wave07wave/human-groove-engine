@@ -7,6 +7,7 @@ from app.engine.style_language import (
     style_drum_variants,
     style_hat_profile,
     style_hat_variants,
+    style_phrase_arrangements,
     style_rhythm_profile,
 )
 from app.models.event import InstrumentID
@@ -189,3 +190,41 @@ def test_kick_and_snare_vocabulary_varies_with_the_phrase() -> None:
     assert len(kick_snare_shapes) >= 8
     compound_variants = style_drum_variants("Funk", MeterDefinition.from_name("6/8"))
     assert compound_variants[0].variant_id == "neutral-drum-carrier"
+
+
+def test_phrase_arrangements_create_four_bar_narratives() -> None:
+    meter = MeterDefinition.from_name("4/4")
+    for style in ("Funk", "Hip Hop", "House", "Rock", "Balanced"):
+        arrangements = style_phrase_arrangements(style, meter)
+        assert len(arrangements) == 4
+        assert len({arrangement.arrangement_id for arrangement in arrangements}) == 4
+        assert all(len(arrangement.vocabulary_offsets) == 4 for arrangement in arrangements)
+        assert all(len(arrangement.tension_scales) == 4 for arrangement in arrangements)
+
+    patterns = [
+        generate_pattern(
+            bpm=118,
+            bars=4,
+            meter=meter,
+            intent=PRESETS["Balanced"],
+            seed=seed,
+            style="Balanced",
+            performance_mode="rule",
+        )
+        for seed in range(24)
+    ]
+    arrangements = {tuple(pattern.metadata.phrase_arrangement_ids) for pattern in patterns}
+    four_bar_shapes = {
+        tuple(
+            (event.instrument.value, event.grid_tick, event.primary_role.value)
+            for event in pattern.events
+            if event.instrument in {InstrumentID.KICK, InstrumentID.SNARE, InstrumentID.CLOSED_HAT}
+        )
+        for pattern in patterns
+    }
+
+    assert all(len(pattern.metadata.phrase_arrangement_ids) == pattern.bars for pattern in patterns)
+    assert len(arrangements) == 4
+    assert len(four_bar_shapes) >= 16
+    compound = style_phrase_arrangements("Funk", MeterDefinition.from_name("6/8"))
+    assert compound[0].arrangement_id == "neutral-phrase"

@@ -34,6 +34,7 @@ class PatternMetadata(BaseModel):
     hat_language_profile: str = "neutral-hat-v1"
     hat_variant_ids: list[str] = Field(default_factory=list)
     drum_variant_ids: list[str] = Field(default_factory=list)
+    phrase_arrangement_ids: list[str] = Field(default_factory=list)
 
     @field_validator("style", mode="before")
     @classmethod
