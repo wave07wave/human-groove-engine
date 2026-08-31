@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.config import (
     ANALYSIS_VERSION,
@@ -21,6 +21,24 @@ class PatternMetadata(BaseModel):
     preset_version: str = PRESET_VERSION
     rng_algorithm: str = RNG_ALGORITHM
     master_seed: int
+    style: str = Field("Balanced", min_length=1, max_length=80)
+    performance_model: str = "rule-pocket-v1"
+    performance_model_version: str = "1.0.0"
+    render_profile: str = "studio-tight-v1"
+    preference_guided: bool = False
+    preference_guidance_strength: float = Field(0, ge=0, le=0.35)
+    preference_guided_features: list[str] = Field(default_factory=list)
+    embodied_operator_arm: str = "baseline"
+    knowledge_pack_id: str = "neutral-v1"
+    knowledge_pack_version: str = "1.0"
+
+    @field_validator("style", mode="before")
+    @classmethod
+    def normalized_style(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("style must not be blank")
+        return normalized
 
 
 class GroovePattern(BaseModel):

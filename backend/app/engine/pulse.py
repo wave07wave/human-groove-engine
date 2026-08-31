@@ -22,7 +22,7 @@ def metric_gravity(meter: MeterDefinition, position_tick: int) -> float:
 
 
 def virtual_beat_map(meter: MeterDefinition, bars: int, stability: float) -> list[float]:
-    step = 240
+    step = meter.subdivision_tick
     return [
         min(0.98, 0.1 + metric_gravity(meter, tick) * (0.55 + 0.35 * stability))
         for tick in range(0, bars * meter.bar_ticks, step)

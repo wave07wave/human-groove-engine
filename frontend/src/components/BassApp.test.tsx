@@ -57,6 +57,31 @@ it('links the selected Groove pattern and exposes every preview mode', async () 
   expect(screen.getByText(/1 kicks/)).toBeTruthy()
 })
 
+it('marks a candidate created by preference-guided search', async () => {
+  const guided = bassPattern('guided-bass')
+  guided.metadata.preference_guided = true
+  guided.metadata.preference_guidance_strength = .35
+  guided.metadata.preference_guided_features = ['density']
+  vi.stubGlobal('fetch', vi.fn((input: string | URL | Request) => {
+    const url = String(input)
+    if (url === '/api/v1/bass/generate') {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ candidates: [guided] }) })
+    }
+    if (url.includes('/history/generations') || url.endsWith('/patterns')) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve([]) })
+    }
+    if (url.includes('/preferences')) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(null) })
+    }
+    return Promise.resolve({ ok: true, json: () => Promise.resolve({ built_in: { Supportive: intent }, user: {} }) })
+  }))
+
+  render(<BassApp groovePattern={null} />)
+  fireEvent.click(await screen.findByRole('button', { name: 'GENERATE BASS' }))
+
+  expect(await screen.findByText('好み探索 · 0 notes')).toBeTruthy()
+})
+
 it('applies the matching Groove when a Joint Candidate is selected', async () => {
   const firstGroove = { ...groove, pattern_id: 'joint-groove-a' }
   const secondGroove = { ...groove, pattern_id: 'joint-groove-b' }
@@ -72,7 +97,7 @@ it('applies the matching Groove when a Joint Candidate is selected', async () =>
     const url = String(input)
     if (url === '/api/v1/interaction/generate') return Promise.resolve({ ok: true, json: () => Promise.resolve(jointResponse) })
     if (url.includes('/history/generations') || url.endsWith('/patterns')) return Promise.resolve({ ok: true, json: () => Promise.resolve([]) })
-    if (url.endsWith('/preferences')) return Promise.resolve({ ok: true, json: () => Promise.resolve(null) })
+    if (url.includes('/preferences')) return Promise.resolve({ ok: true, json: () => Promise.resolve(null) })
     return Promise.resolve({ ok: true, json: () => Promise.resolve({ built_in: { Supportive: intent }, user: {} }) })
   }))
   const onGrooveUpdate = vi.fn()
@@ -84,6 +109,6 @@ it('applies the matching Groove when a Joint Candidate is selected', async () =>
   expect(onGrooveUpdate).toHaveBeenLastCalledWith(firstGroove)
   expect(screen.getByLabelText('Joint changes').textContent).toContain('0 → 120 ticks')
 
-  fireEvent.click(screen.getByRole('button', { name: /^B.*bass groove/ }))
+  fireEvent.click(screen.getByRole('button', { name: /^B.*試聴候補/ }))
   await waitFor(() => expect(onGrooveUpdate).toHaveBeenLastCalledWith(secondGroove))
 })

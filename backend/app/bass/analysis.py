@@ -55,7 +55,10 @@ def _motif_similarity(pattern: BassPattern) -> float:
         start = bar * pattern.meter.bar_ticks
         signatures.append(
             {
-                ((event.grid_tick - start) // (PPQ // 4), event.harmonic_role.value)
+                (
+                    (event.grid_tick - start) // pattern.meter.subdivision_tick,
+                    event.harmonic_role.value,
+                )
                 for event in pattern.events
                 if start <= event.grid_tick < start + pattern.meter.bar_ticks
             }

@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import uuid
 from enum import StrEnum
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.config import (
     ANALYSIS_VERSION,
@@ -404,9 +405,21 @@ class BassPatternMetadata(UnitModel):
     preset_version: str = PRESET_VERSION
     rng_algorithm: str = RNG_ALGORITHM
     master_seed: int
+    preset: str = Field("Supportive", min_length=1, max_length=80)
     candidate_index: int = 0
     revision: int = 0
     resolved_intent_notes: list[str] = Field(default_factory=list)
+    preference_guided: bool = False
+    preference_guidance_strength: float = Field(0, ge=0, le=0.35)
+    preference_guided_features: list[str] = Field(default_factory=list)
+
+    @field_validator("preset", mode="before")
+    @classmethod
+    def normalized_preset(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("preset must not be blank")
+        return normalized
 
 
 class KickEvent(UnitModel):
@@ -524,12 +537,20 @@ class BassGenerateRequest(UnitModel):
     key: str | None = "C"
     mode: ScaleMode = ScaleMode.MAJOR
     intent: BassIntent = Field(default_factory=BassIntent)
-    preset: str = "Supportive"
+    preset: str = Field("Supportive", min_length=1, max_length=80)
     seed: int = Field(42, ge=0)
     candidate_count: int = Field(4, ge=1, le=4)
     register_limits: RegisterLimits = Field(default_factory=RegisterLimits)
     voice_policy: BassVoicePolicy = BassVoicePolicy.MONOPHONIC_RETRIGGER
     groove_context: GrooveContext | None = None
+
+    @field_validator("preset", mode="before")
+    @classmethod
+    def normalized_preset(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("preset must not be blank")
+        return normalized
 
 
 class BassGenerateResponse(UnitModel):
@@ -576,8 +597,28 @@ class SaveBassPresetRequest(UnitModel):
 class BassPreferenceRequest(UnitModel):
     candidate_a: BassPattern
     candidate_b: BassPattern
-    selected: str = Field(pattern=r"^[AB]$")
-    display_order: list[str] = Field(default_factory=lambda: ["A", "B"])
+    selected: Literal["A", "B", "tie"]
+    display_order: list[str] = Field(default_factory=list, max_length=2)
+    comparison_id: str = Field(
+        default_factory=lambda: uuid.uuid4().hex,
+        min_length=8,
+        max_length=64,
+        pattern=r"^[A-Za-z0-9-]+$",
+    )
+    decision_time_ms: int | None = Field(default=None, ge=250, le=3_600_000)
+
+    @model_validator(mode="after")
+    def valid_comparison(self) -> "BassPreferenceRequest":
+        candidate_ids = [self.candidate_a.pattern_id, self.candidate_b.pattern_id]
+        if candidate_ids[0] == candidate_ids[1]:
+            raise ValueError("preference candidates must be distinct")
+        if not self.display_order:
+            self.display_order = candidate_ids
+        if len(self.display_order) != 2 or set(self.display_order) != set(candidate_ids):
+            raise ValueError("display order must contain both candidate IDs exactly once")
+        if self.candidate_a.metadata.preset.strip() != self.candidate_b.metadata.preset.strip():
+            raise ValueError("preference candidates must use the same preset")
+        return self
 
 
 class PreferenceRange(UnitModel):
@@ -586,13 +627,26 @@ class PreferenceRange(UnitModel):
     high: float = Field(ge=0, le=1)
     uncertainty: float = Field(ge=0, le=1)
     observations: int = Field(ge=0)
+    evidence: float = Field(
+        0,
+        ge=0,
+        le=1,
+        description=(
+            "Evidence that selected candidates were closer to this range than rejected ones"
+        ),
+    )
 
 
 class BassPreferenceSummary(UnitModel):
     comparisons: int = Field(ge=0)
+    decisive_comparisons: int = Field(0, ge=0)
+    ties: int = Field(0, ge=0)
+    effective_comparisons: float = Field(0, ge=0)
+    learning_confidence: float = Field(0, ge=0, le=1)
     personal_weight: float = Field(ge=0, le=0.8)
     feature_weights: dict[str, float] = Field(default_factory=dict)
     preferred_ranges: dict[str, PreferenceRange] = Field(default_factory=dict)
+    profile_scope: str | None = None
     schema_version: str = SCHEMA_VERSION
 
 
@@ -616,6 +670,7 @@ class BassPresetExchange(UnitModel):
 
 
 class BassGenerationRecord(UnitModel):
+    generation_id: int = Field(ge=1)
     pattern_id: str
     name: str
     created_at: str
@@ -625,7 +680,10 @@ class BassGenerationRecord(UnitModel):
 class BassPreferenceRecord(UnitModel):
     candidate_a: str
     candidate_b: str
-    selected: Literal["A", "B"]
+    selected: Literal["A", "B", "tie"]
     display_order: list[str]
+    comparison_id: str | None = None
+    decision_time_ms: int | None = None
+    profile_scope: str | None = None
     created_at: str
     schema_version: str

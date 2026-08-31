@@ -15,7 +15,9 @@ groove_db = GrooveDatabase()
 
 @router.post("/generate", response_model=JointGenerateResponse)
 def generate(request: JointGenerateRequest) -> JointGenerateResponse:
-    response = generate_joint_candidates(request, bass_db.preference_summary())
+    response = generate_joint_candidates(
+        request, bass_db.preference_summary(request.bass_request.preset)
+    )
     for candidate in response.candidates:
         groove_db.save_generation(candidate.groove_pattern)
         bass_db.save_generation(candidate.bass_pattern)
@@ -29,4 +31,5 @@ def capabilities() -> dict:
         "smallest_joint_modification": True,
         "shared_complexity_budget": True,
         "lock_preservation": True,
+        "reference_render_analysis": True,
     }

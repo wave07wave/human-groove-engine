@@ -31,6 +31,7 @@ from .models import (
 )
 from .mutation import mutate_bass_pattern, refine_bass_pattern
 from .persistence import BassDatabase
+from .preference import PREFERENCE_FEATURES
 from .presets import BASS_PRESETS
 
 router = APIRouter(prefix="/api/v1/bass", tags=["bass"])
@@ -44,7 +45,7 @@ def context_from_groove(pattern: GroovePattern) -> GrooveContext:
 
 @router.post("/generate", response_model=BassGenerateResponse)
 def generate(request: BassGenerateRequest) -> BassGenerateResponse:
-    profile = db.preference_summary()
+    profile = db.preference_summary(request.preset)
     candidates = generate_bass_candidates(request, profile)
     for pattern in candidates:
         db.save_generation(pattern)
@@ -128,6 +129,14 @@ def generation_history(limit: int = Query(50, ge=1, le=200)) -> list[BassGenerat
     return db.generation_history(limit)
 
 
+@router.get("/history/generation-records/{generation_id}", response_model=BassPattern)
+def generation_record_pattern(generation_id: int) -> BassPattern:
+    pattern = db.generation_record_pattern(generation_id)
+    if pattern is None:
+        raise HTTPException(status_code=404, detail="Bass generation record not found")
+    return pattern
+
+
 @router.get("/history/generations/{pattern_id}", response_model=BassPattern)
 def generation_pattern(pattern_id: str) -> BassPattern:
     pattern = db.generation_pattern(pattern_id)
@@ -175,13 +184,18 @@ def import_preset(exchange: BassPresetExchange) -> BassPresetExchange:
 
 @router.post("/preferences", response_model=BassPreferenceSummary)
 def save_preference(request: BassPreferenceRequest) -> BassPreferenceSummary:
-    db.save_preference(request)
-    return db.preference_summary()
+    try:
+        db.save_preference(request)
+    except ValueError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    return db.preference_summary(request.candidate_a.metadata.preset)
 
 
 @router.get("/preferences", response_model=BassPreferenceSummary)
-def preferences() -> BassPreferenceSummary:
-    return db.preference_summary()
+def preferences(
+    preset: str | None = Query(None, min_length=1, max_length=80),
+) -> BassPreferenceSummary:
+    return db.preference_summary(preset)
 
 
 @router.get("/presets")
@@ -219,6 +233,11 @@ def capabilities() -> dict:
         "refine": True,
         "preference_learning": True,
         "preference_ranges": True,
+        "preference_dimensions": len(PREFERENCE_FEATURES),
+        "preference_scopes": True,
+        "preference_ties": True,
+        "preference_idempotency": True,
+        "preference_effective_evidence": True,
         "joint_optimizer": True,
         "integration_modes": ["follow", "negotiate", "co_create"],
         "shared_complexity_budget": True,

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import math
 
+from app.preference_scoring import preference_score_breakdown
+
 from .analysis import clamp
 from .models import BassPattern, BassPreferenceSummary
 
@@ -45,8 +47,9 @@ def personal_preference_score(
     if not profile or not profile.comparisons:
         return 0.5
     features = preference_features(pattern)
-    logit = sum(profile.feature_weights.get(key, 0) * value for key, value in features.items())
-    return 1 / (1 + math.exp(-max(-30, min(30, logit))))
+    return preference_score_breakdown(
+        features, profile.feature_weights, profile.preferred_ranges
+    ).combined
 
 
 def blended_candidate_score(

@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { api, bassApi } from '../api/client'
-import { toggleMixPreview } from '../audio/mixPreview'
 import type { BassGenerateRequest, BassPresetsResponse, BassPattern, GroovePattern, PresetsResponse } from '../types/generated'
 import { METERS } from '../utils/meters'
+import { DRUM_SOUND_OPTIONS, type DrumSoundId } from '../audio/drumKitProfile'
 
 type Props = {
   groove: GroovePattern | null
@@ -18,6 +18,7 @@ export function QuickComposer({ groove, bass, onReady, onOpenDetails }: Props) {
   const [bassRole, setBassRole] = useState('Supportive')
   const [bpm, setBpm] = useState(100)
   const [bars, setBars] = useState(4)
+  const [renderProfile, setRenderProfile] = useState<DrumSoundId>('studio-tight-v1')
   const [seed, setSeed] = useState(42)
   const [busy, setBusy] = useState(false)
   const [playing, setPlaying] = useState(false)
@@ -39,7 +40,7 @@ export function QuickComposer({ groove, bass, onReady, onOpenDetails }: Props) {
       setSeed(nextSeed)
       const grooveResponse = await api.generate({
         bpm, bars, meter: METERS['4/4'], intent: grooveIntent, preset: style,
-        seed: nextSeed, mode: 'preview', candidate_count: 1,
+        seed: nextSeed, mode: 'preview', performance_mode: 'auto', render_profile: renderProfile, candidate_count: 1,
       })
       const nextGroove = grooveResponse.candidates[0]
       const request: BassGenerateRequest = {
@@ -70,6 +71,7 @@ export function QuickComposer({ groove, bass, onReady, onOpenDetails }: Props) {
         <label>BPM<input type="number" min="30" max="300" value={bpm} onChange={event => setBpm(Number(event.target.value))} /></label>
         <label>長さ<select value={bars} onChange={event => setBars(Number(event.target.value))}>{[2, 4, 8, 16].map(value => <option key={value} value={value}>{value}小節</option>)}</select></label>
       </div>
+      <div className="quick-sound" role="radiogroup" aria-label="ドラム音色"><b>ドラムの音色</b><span>再生したときのキック、スネア、ハイハットの質感を選べます。</span><div>{DRUM_SOUND_OPTIONS.map(option => <button key={option.id} type="button" role="radio" aria-checked={renderProfile === option.id} className={renderProfile === option.id ? 'active' : ''} onClick={() => setRenderProfile(option.id)}>{option.label}</button>)}</div></div>
     </section>
     <section className="quick-status panel">
       <div><b>{groove && bass ? '準備完了' : '手順 1'}</b><span>{groove && bass ? 'GrooveとBassを一緒に再生できます。' : '設定を選んで「まとめて作成」を押してください。'}</span></div>
@@ -78,7 +80,7 @@ export function QuickComposer({ groove, bass, onReady, onOpenDetails }: Props) {
     {error && <p className="error">{error}</p>}
     <div className="quick-actions" aria-label="Easy mode actions">
       <button className="generate" disabled={busy || !groovePresets || !bassPresets} onClick={generateSong}>{busy ? '作成中…' : 'まとめて作成'}</button>
-      <button className={playing ? 'play active' : 'play'} disabled={!groove || !bass} onClick={() => { if (groove && bass) void toggleMixPreview(groove, bass, setPlaying).catch(cause => setError(`音声を開始できません: ${String(cause)}`)) }}>{playing ? '■ 停止' : '▶ 同時再生'}</button>
+      <button className={playing ? 'play active' : 'play'} disabled={!groove || !bass} onClick={() => { if (groove && bass) void import('../audio/mixPreview').then(module=>module.toggleMixPreview(groove,bass,setPlaying)).catch(cause => setError(`音声を開始できません: ${String(cause)}`)) }}>{playing ? '■ 停止' : '▶ 同時再生'}</button>
     </div>
   </main>
 }

@@ -18,6 +18,7 @@ def test_pattern_library_and_versioned_histories(tmp_path) -> None:
     left, right = source_pattern(0), source_pattern(1)
     database.save_pattern(left)
     database.save_generation(left)
+    database.save_generation(left)
     database.save_preference(
         BassPreferenceRequest(
             candidate_a=left,
@@ -28,12 +29,18 @@ def test_pattern_library_and_versioned_histories(tmp_path) -> None:
     )
 
     assert database.saved_patterns()[0].model_dump() == left.model_dump()
-    assert database.generation_history(1)[0].pattern_id == left.pattern_id
+    history = database.generation_history(2)
+    assert [item.pattern_id for item in history] == [left.pattern_id, left.pattern_id]
+    assert history[0].generation_id != history[1].generation_id
+    restored = database.generation_record_pattern(history[1].generation_id)
+    assert restored is not None and restored.model_dump() == left.model_dump()
     assert database.generation_pattern(left.pattern_id).model_dump() == left.model_dump()
     assert database.generation_pattern("missing") is None
     preference = database.preference_history(1)[0]
     assert preference.selected == "B"
     assert preference.display_order == [right.pattern_id, left.pattern_id]
+    assert preference.profile_scope == "Supportive"
+    assert preference.comparison_id is not None
     assert preference.schema_version == "1.0"
     assert database.delete_pattern(left.pattern_id) is True
     assert database.delete_pattern(left.pattern_id) is False
@@ -64,14 +71,32 @@ def test_generation_history_pattern_api_loads_a_saved_generation() -> None:
         json={"bars": 2, "harmony": "Dm7 | G7", "candidate_count": 1, "seed": 817},
     )
     assert generated.status_code == 200, generated.text
+    assert generated.json()["preference_profile"]["profile_scope"] == "Supportive"
     pattern_id = generated.json()["candidates"][0]["pattern_id"]
+    assert generated.json()["candidates"][0]["metadata"]["preset"] == "Supportive"
+    history = client.get("/api/v1/bass/history/generations?limit=1").json()
+    generation_id = history[0]["generation_id"]
 
     loaded = client.get(f"/api/v1/bass/history/generations/{pattern_id}")
+    loaded_record = client.get(f"/api/v1/bass/history/generation-records/{generation_id}")
     missing = client.get("/api/v1/bass/history/generations/missing")
+    missing_record = client.get("/api/v1/bass/history/generation-records/2147483647")
 
     assert loaded.status_code == 200, loaded.text
     assert loaded.json()["pattern_id"] == pattern_id
+    assert loaded_record.status_code == 200, loaded_record.text
+    assert loaded_record.json()["pattern_id"] == pattern_id
     assert missing.status_code == 404
+    assert missing_record.status_code == 404
+
+
+def test_bass_preference_profile_query_keeps_presets_separate() -> None:
+    supportive = TestClient(app).get("/api/v1/bass/preferences?preset=Supportive")
+    walking = TestClient(app).get("/api/v1/bass/preferences?preset=Walking")
+    assert supportive.status_code == 200
+    assert walking.status_code == 200
+    assert supportive.json()["profile_scope"] == "Supportive"
+    assert walking.json()["profile_scope"] == "Walking"
 
 
 def test_saved_pattern_delete_api_round_trip() -> None:

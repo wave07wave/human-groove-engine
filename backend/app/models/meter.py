@@ -18,11 +18,19 @@ class MeterDefinition(BaseModel):
         valid_sums = {self.numerator, self.numerator * 2}
         if sum(self.grouping) not in valid_sums:
             raise ValueError(f"grouping must sum to one of {sorted(valid_sums)}")
+        if PPQ % self.subdivisions_per_quarter:
+            raise ValueError("subdivisions_per_quarter must divide PPQ exactly")
+        if self.bar_ticks % self.subdivision_tick:
+            raise ValueError("subdivision grid must fit the bar exactly")
         return self
 
     @property
     def bar_ticks(self) -> int:
         return int(self.numerator * PPQ * 4 / self.denominator)
+
+    @property
+    def subdivision_tick(self) -> int:
+        return PPQ // self.subdivisions_per_quarter
 
     @classmethod
     def from_name(cls, name: str) -> "MeterDefinition":

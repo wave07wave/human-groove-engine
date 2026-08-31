@@ -1,0 +1,1031 @@
+{
+  "dataset": {
+    "attribution": "Google LLC; Gillick et al., ICML 2019",
+    "license": "CC BY 4.0",
+    "name": "Groove MIDI Dataset v1.0.0 MIDI-only",
+    "sha256": "651cbc524ffb891be1a3e46d89dc82a1cecb09a57c748c7b45b844c4841dcc1e",
+    "source_url": "https://storage.googleapis.com/magentadata/datasets/groove/groove-v1.0.0-midionly.zip",
+    "training_files": 368,
+    "training_hits": 324852,
+    "training_split": "train beats in 4/4"
+  },
+  "model_id": "gmd-performance-v1",
+  "model_version": "1.0.0",
+  "schema_version": "1.0",
+  "styles": {
+    "Balanced": {
+      "hit_count": 324852,
+      "instruments": {
+        "bass": {
+          "count": 64466,
+          "timing_loading": 0.5781600591490466,
+          "timing_mean_us": -2400.2656140578665,
+          "timing_residual_std_us": 23881.167428622208,
+          "velocity_loading": 0.3233825238595542,
+          "velocity_mean": 55.06547637514349,
+          "velocity_residual_std": 28.954600996609962
+        },
+        "closed_hat": {
+          "count": 85670,
+          "timing_loading": 0.5497451687429165,
+          "timing_mean_us": -10292.986455738868,
+          "timing_residual_std_us": 21785.79021278751,
+          "velocity_loading": 0.12897669864794015,
+          "velocity_mean": 68.1362320532275,
+          "velocity_residual_std": 30.021042899196768
+        },
+        "kick": {
+          "count": 64466,
+          "timing_loading": 0.5781600591490466,
+          "timing_mean_us": -5900.2656140578665,
+          "timing_residual_std_us": 23881.167428622208,
+          "velocity_loading": 0.3233825238595542,
+          "velocity_mean": 59.06547637514349,
+          "velocity_residual_std": 28.954600996609962
+        },
+        "open_hat": {
+          "count": 10655,
+          "timing_loading": 0.5134032027229717,
+          "timing_mean_us": -7536.484787054892,
+          "timing_residual_std_us": 19891.165783595778,
+          "velocity_loading": 0.48548926321574465,
+          "velocity_mean": 83.18714218676678,
+          "velocity_residual_std": 38.565899776567996
+        },
+        "percussion": {
+          "count": 68629,
+          "timing_loading": 0.5941195983066424,
+          "timing_mean_us": -4749.754869852278,
+          "timing_residual_std_us": 22334.321243323768,
+          "velocity_loading": 0.3235241510219268,
+          "velocity_mean": 78.77916041323638,
+          "velocity_residual_std": 29.211731539578057
+        },
+        "snare": {
+          "count": 95432,
+          "timing_loading": 0.10421556201604297,
+          "timing_mean_us": -5446.583600146939,
+          "timing_residual_std_us": 25000.0,
+          "velocity_loading": 0.6383967970037072,
+          "velocity_mean": 67.81673862016933,
+          "velocity_residual_std": 34.919446760567745
+        }
+      },
+      "phrase_timing_us": {
+        "closing": -731.4396134214338,
+        "middle": 12.819886615158051,
+        "opening": 702.1245513992682
+      },
+      "phrase_velocity": {
+        "closing": 2.4045510022428545,
+        "middle": -1.1399921069758536,
+        "opening": -0.11708354024500543
+      },
+      "position_timing_us": {
+        "beat": -2089.0645300634746,
+        "downbeat": -1650.8757182177392,
+        "off_eighth": -1629.7064423504721,
+        "weak_sixteenth": 4128.490483558608
+      },
+      "position_velocity": {
+        "beat": 10.100790752309155,
+        "downbeat": 4.013276640473524,
+        "off_eighth": -0.0939468578161888,
+        "weak_sixteenth": -11.0544976234082
+      },
+      "shared_timing_std_us": 23386.025886267056,
+      "shared_velocity_std": 29.731458594833214,
+      "source_genres": [
+        "afrobeat",
+        "afrocuban",
+        "blues",
+        "country",
+        "dance",
+        "funk",
+        "gospel",
+        "highlife",
+        "hiphop",
+        "jazz",
+        "latin",
+        "middleeastern",
+        "neworleans",
+        "pop",
+        "punk",
+        "reggae",
+        "rock",
+        "soul"
+      ],
+      "tempo_timing_us": {
+        "fast": -275.2542576189634,
+        "medium": 796.708102175263,
+        "slow": -3770.145038714212
+      },
+      "tempo_velocity": {
+        "fast": -3.3237743837006897,
+        "medium": 1.705156522806609,
+        "slow": -2.2159415678855603
+      }
+    },
+    "Broken": {
+      "hit_count": 136346,
+      "instruments": {
+        "bass": {
+          "count": 26498,
+          "timing_loading": 0.4051548558790561,
+          "timing_mean_us": -2507.373432134784,
+          "timing_residual_std_us": 25000.0,
+          "velocity_loading": 0.29287253289979054,
+          "velocity_mean": 43.85157370367575,
+          "velocity_residual_std": 27.621904703418025
+        },
+        "closed_hat": {
+          "count": 28609,
+          "timing_loading": 0.38892670941283186,
+          "timing_mean_us": -13961.096902012107,
+          "timing_residual_std_us": 23791.967707197917,
+          "velocity_loading": 0.07047747161256206,
+          "velocity_mean": 65.96221468768569,
+          "velocity_residual_std": 26.476690644910718
+        },
+        "kick": {
+          "count": 26498,
+          "timing_loading": 0.4051548558790561,
+          "timing_mean_us": -6007.373432134784,
+          "timing_residual_std_us": 25000.0,
+          "velocity_loading": 0.29287253289979054,
+          "velocity_mean": 47.85157370367575,
+          "velocity_residual_std": 27.621904703418025
+        },
+        "open_hat": {
+          "count": 1770,
+          "timing_loading": 0.6668826611769523,
+          "timing_mean_us": -11241.721777937613,
+          "timing_residual_std_us": 17837.568330184633,
+          "velocity_loading": 0.4510869904893052,
+          "velocity_mean": 93.29661016949153,
+          "velocity_residual_std": 30.121843131463066
+        },
+        "percussion": {
+          "count": 33788,
+          "timing_loading": 0.4321368443888585,
+          "timing_mean_us": -9491.780629505289,
+          "timing_residual_std_us": 21947.99632012611,
+          "velocity_loading": 0.3281377273359129,
+          "velocity_mean": 78.56055404285546,
+          "velocity_residual_std": 28.893387107579546
+        },
+        "snare": {
+          "count": 45681,
+          "timing_loading": -0.07220737087572282,
+          "timing_mean_us": -7971.874606300588,
+          "timing_residual_std_us": 25000.0,
+          "velocity_loading": 0.5320057392092825,
+          "velocity_mean": 59.937107331275584,
+          "velocity_residual_std": 33.35337548330578
+        }
+      },
+      "phrase_timing_us": {
+        "closing": -234.6159067786768,
+        "middle": -308.6752668165747,
+        "opening": 847.4501827915764
+      },
+      "phrase_velocity": {
+        "closing": 2.2531094372902185,
+        "middle": -0.7178137394252478,
+        "opening": -0.8030470626620972
+      },
+      "position_timing_us": {
+        "beat": -2110.9953959946324,
+        "downbeat": -948.7723998281052,
+        "off_eighth": -981.8866403773262,
+        "weak_sixteenth": 2936.203705013684
+      },
+      "position_velocity": {
+        "beat": 4.909693049239152,
+        "downbeat": 3.024074178889691,
+        "off_eighth": 0.9119674549137073,
+        "weak_sixteenth": -5.904140338368393
+      },
+      "shared_timing_std_us": 22357.74420127321,
+      "shared_velocity_std": 27.379714021802585,
+      "source_genres": [
+        "afrocuban",
+        "jazz",
+        "latin",
+        "middleeastern",
+        "neworleans"
+      ],
+      "tempo_timing_us": {
+        "fast": 2765.459699441064,
+        "medium": -516.228661355305,
+        "slow": -5708.311560837906
+      },
+      "tempo_velocity": {
+        "fast": -4.428356881707706,
+        "medium": 1.9535540536109877,
+        "slow": 1.7996511859425808
+      }
+    },
+    "Forward": {
+      "hit_count": 125789,
+      "instruments": {
+        "bass": {
+          "count": 25323,
+          "timing_loading": 0.6960599970909294,
+          "timing_mean_us": -640.227797159353,
+          "timing_residual_std_us": 20358.120233260823,
+          "velocity_loading": 0.2329841336898686,
+          "velocity_mean": 66.75279390277613,
+          "velocity_residual_std": 28.591527042987853
+        },
+        "closed_hat": {
+          "count": 35248,
+          "timing_loading": 0.6276971406353561,
+          "timing_mean_us": -6696.087693705225,
+          "timing_residual_std_us": 21990.60391711862,
+          "velocity_loading": 0.0367190840244849,
+          "velocity_mean": 72.67311620517476,
+          "velocity_residual_std": 31.63613403566845
+        },
+        "kick": {
+          "count": 25323,
+          "timing_loading": 0.6960599970909294,
+          "timing_mean_us": -4140.227797159353,
+          "timing_residual_std_us": 20358.120233260823,
+          "velocity_loading": 0.2329841336898686,
+          "velocity_mean": 70.75279390277613,
+          "velocity_residual_std": 28.591527042987853
+        },
+        "open_hat": {
+          "count": 5800,
+          "timing_loading": 0.4341567610237693,
+          "timing_mean_us": -4105.882733773208,
+          "timing_residual_std_us": 22858.14601300362,
+          "velocity_loading": 0.40128561256984924,
+          "velocity_mean": 72.8248275862069,
+          "velocity_residual_std": 42.9329403963008
+        },
+        "percussion": {
+          "count": 28360,
+          "timing_loading": 0.6969305470697931,
+          "timing_mean_us": 2477.7079799920834,
+          "timing_residual_std_us": 21569.129217632362,
+          "velocity_loading": 0.31860759544830625,
+          "velocity_mean": 78.34841325811001,
+          "velocity_residual_std": 27.808786262671585
+        },
+        "snare": {
+          "count": 31058,
+          "timing_loading": 0.2924536825674888,
+          "timing_mean_us": -1687.5682528042958,
+          "timing_residual_std_us": 25000.0,
+          "velocity_loading": 0.5392160903189811,
+          "velocity_mean": 76.98435185781442,
+          "velocity_residual_std": 35.31136106284463
+        }
+      },
+      "phrase_timing_us": {
+        "closing": -735.978117332828,
+        "middle": 68.83609904010007,
+        "opening": 586.8723628289698
+      },
+      "phrase_velocity": {
+        "closing": 2.3462435974045546,
+        "middle": -1.3696627367180245,
+        "opening": 0.40745971174095774
+      },
+      "position_timing_us": {
+        "beat": -2059.207054837931,
+        "downbeat": -1240.4033489416356,
+        "off_eighth": -482.68998356790013,
+        "weak_sixteenth": 3255.189064584144
+      },
+      "position_velocity": {
+        "beat": 11.746800204347059,
+        "downbeat": 4.838035901736309,
+        "off_eighth": -1.3179207514234104,
+        "weak_sixteenth": -13.47494960610601
+      },
+      "shared_timing_std_us": 24411.05187118276,
+      "shared_velocity_std": 28.937734028429812,
+      "source_genres": [
+        "afrobeat",
+        "dance",
+        "punk",
+        "rock"
+      ],
+      "tempo_timing_us": {
+        "fast": -3914.1811705157065,
+        "medium": 1780.2238145542353,
+        "slow": -2236.5998897561108
+      },
+      "tempo_velocity": {
+        "fast": -2.373571172388306,
+        "medium": 2.3507471212273754,
+        "slow": -11.78628431597107
+      }
+    },
+    "Funk": {
+      "hit_count": 71691,
+      "instruments": {
+        "bass": {
+          "count": 14648,
+          "timing_loading": 0.5359164892418552,
+          "timing_mean_us": -3082.5270866831934,
+          "timing_residual_std_us": 23133.797131294126,
+          "velocity_loading": 0.2142996896943282,
+          "velocity_mean": 53.39787001638449,
+          "velocity_residual_std": 26.467091080640934
+        },
+        "closed_hat": {
+          "count": 23108,
+          "timing_loading": 0.5639865015046897,
+          "timing_mean_us": -10489.184114196369,
+          "timing_residual_std_us": 19123.639409637137,
+          "velocity_loading": 0.19713128967483226,
+          "velocity_mean": 63.775056257573134,
+          "velocity_residual_std": 29.69241955193437
+        },
+        "kick": {
+          "count": 14648,
+          "timing_loading": 0.5359164892418552,
+          "timing_mean_us": -6582.527086683193,
+          "timing_residual_std_us": 23133.797131294126,
+          "velocity_loading": 0.2142996896943282,
+          "velocity_mean": 57.39787001638449,
+          "velocity_residual_std": 26.467091080640934
+        },
+        "open_hat": {
+          "count": 3079,
+          "timing_loading": 0.7211922597213727,
+          "timing_mean_us": -11650.177146038981,
+          "timing_residual_std_us": 15245.161261025585,
+          "velocity_loading": 0.4616923498457598,
+          "velocity_mean": 101.39883078921727,
+          "velocity_residual_std": 26.785076229867883
+        },
+        "percussion": {
+          "count": 6410,
+          "timing_loading": 0.41741748002346785,
+          "timing_mean_us": -12363.807796919995,
+          "timing_residual_std_us": 20092.111132663827,
+          "velocity_loading": 0.33922602444811323,
+          "velocity_mean": 83.29344773790952,
+          "velocity_residual_std": 34.29462989193073
+        },
+        "snare": {
+          "count": 24446,
+          "timing_loading": 0.03390158234675164,
+          "timing_mean_us": -3857.37552670853,
+          "timing_residual_std_us": 25000.0,
+          "velocity_loading": 0.5973663197658033,
+          "velocity_mean": 70.5052769369222,
+          "velocity_residual_std": 36.31402231733421
+        }
+      },
+      "phrase_timing_us": {
+        "closing": -1581.9598517803909,
+        "middle": 467.3772224136727,
+        "opening": 667.5599713801538
+      },
+      "phrase_velocity": {
+        "closing": 2.8827977693803537,
+        "middle": -1.5483804972683182,
+        "opening": 0.20208097053780055
+      },
+      "position_timing_us": {
+        "beat": -4055.7391340589684,
+        "downbeat": -5469.9733915961415,
+        "off_eighth": -5989.28733909628,
+        "weak_sixteenth": 10920.847099562376
+      },
+      "position_velocity": {
+        "beat": 15.429598180454425,
+        "downbeat": 4.080231400947715,
+        "off_eighth": 0.6665916829325105,
+        "weak_sixteenth": -15.2994086695825
+      },
+      "shared_timing_std_us": 21184.554349350678,
+      "shared_velocity_std": 29.88304417773546,
+      "source_genres": [
+        "funk",
+        "gospel",
+        "hiphop",
+        "neworleans",
+        "soul"
+      ],
+      "tempo_timing_us": {
+        "fast": -5121.131943373465,
+        "medium": 996.9289826086031,
+        "slow": -2846.067016033346
+      },
+      "tempo_velocity": {
+        "fast": 8.373870259183038,
+        "medium": -2.1769195548659313,
+        "slow": 6.644925759053367
+      }
+    },
+    "Hypnotic": {
+      "hit_count": 34187,
+      "instruments": {
+        "bass": {
+          "count": 6862,
+          "timing_loading": 0.5338027782648964,
+          "timing_mean_us": -5515.177276093866,
+          "timing_residual_std_us": 14650.398224107354,
+          "velocity_loading": 0.3174101759751479,
+          "velocity_mean": 69.27091227047508,
+          "velocity_residual_std": 29.701833686225388
+        },
+        "closed_hat": {
+          "count": 12212,
+          "timing_loading": 0.36826017580764,
+          "timing_mean_us": -11747.219107759905,
+          "timing_residual_std_us": 18601.528224402904,
+          "velocity_loading": 0.1433821338890712,
+          "velocity_mean": 66.87078283655421,
+          "velocity_residual_std": 29.552427445713363
+        },
+        "kick": {
+          "count": 6862,
+          "timing_loading": 0.5338027782648964,
+          "timing_mean_us": -9015.177276093866,
+          "timing_residual_std_us": 14650.398224107354,
+          "velocity_loading": 0.3174101759751479,
+          "velocity_mean": 73.27091227047508,
+          "velocity_residual_std": 29.701833686225388
+        },
+        "open_hat": {
+          "count": 1830,
+          "timing_loading": 0.11635525671220893,
+          "timing_mean_us": -11460.766988623423,
+          "timing_residual_std_us": 16251.830497113906,
+          "velocity_loading": 0.4813007362989938,
+          "velocity_mean": 97.26120218579236,
+          "velocity_residual_std": 31.61604245088641
+        },
+        "percussion": {
+          "count": 4063,
+          "timing_loading": 0.5514390219117974,
+          "timing_mean_us": -10892.528967432481,
+          "timing_residual_std_us": 14633.429847621153,
+          "velocity_loading": 0.5103296569487793,
+          "velocity_mean": 92.63696775781442,
+          "velocity_residual_std": 29.61678888104529
+        },
+        "snare": {
+          "count": 9220,
+          "timing_loading": -0.009672856508737419,
+          "timing_mean_us": -5709.269929225888,
+          "timing_residual_std_us": 23427.440952426834,
+          "velocity_loading": 0.5355336191709269,
+          "velocity_mean": 78.8939262472885,
+          "velocity_residual_std": 37.0940944207766
+        }
+      },
+      "phrase_timing_us": {
+        "closing": -670.4689773807049,
+        "middle": 7.672494514622535,
+        "opening": 686.8034342377059
+      },
+      "phrase_velocity": {
+        "closing": 5.267489431391031,
+        "middle": -2.4163456338889913,
+        "opening": -0.5935764210865211
+      },
+      "position_timing_us": {
+        "beat": -2617.6239511001895,
+        "downbeat": -1150.618038985067,
+        "off_eighth": -4900.180328245224,
+        "weak_sixteenth": 7351.7589534335075
+      },
+      "position_velocity": {
+        "beat": 5.234274296444054,
+        "downbeat": 6.766626277451193,
+        "off_eighth": 3.5248589067176095,
+        "weak_sixteenth": -10.212119091956668
+      },
+      "shared_timing_std_us": 18407.70697430687,
+      "shared_velocity_std": 29.351567374467805,
+      "source_genres": [
+        "afrobeat",
+        "dance",
+        "highlife",
+        "reggae"
+      ],
+      "tempo_timing_us": {
+        "fast": 2477.3970278836537,
+        "medium": -897.3362201377051,
+        "slow": -1746.5397769609438
+      },
+      "tempo_velocity": {
+        "fast": 0.5161280303290144,
+        "medium": 0.6710831690479327,
+        "slow": -17.07170524711841
+      }
+    },
+    "Laid Back": {
+      "hit_count": 22985,
+      "instruments": {
+        "bass": {
+          "count": 5065,
+          "timing_loading": 0.6416920584691698,
+          "timing_mean_us": -8249.86629305179,
+          "timing_residual_std_us": 21237.301854850117,
+          "velocity_loading": 0.2831648673404549,
+          "velocity_mean": 51.84817374136229,
+          "velocity_residual_std": 24.62781849520255
+        },
+        "closed_hat": {
+          "count": 8236,
+          "timing_loading": 0.5684907050723613,
+          "timing_mean_us": -13061.716682973305,
+          "timing_residual_std_us": 20025.537185288238,
+          "velocity_loading": 0.376199362759634,
+          "velocity_mean": 65.99247207382224,
+          "velocity_residual_std": 30.559704707908082
+        },
+        "kick": {
+          "count": 5065,
+          "timing_loading": 0.6416920584691698,
+          "timing_mean_us": -11749.86629305179,
+          "timing_residual_std_us": 21237.301854850117,
+          "velocity_loading": 0.2831648673404549,
+          "velocity_mean": 55.84817374136229,
+          "velocity_residual_std": 24.62781849520255
+        },
+        "open_hat": {
+          "count": 1664,
+          "timing_loading": 0.5921304847682898,
+          "timing_mean_us": -11687.253137858943,
+          "timing_residual_std_us": 17108.350271083742,
+          "velocity_loading": 0.48065062039959977,
+          "velocity_mean": 94.48540264423079,
+          "velocity_residual_std": 28.82450161333173
+        },
+        "percussion": {
+          "count": 2360,
+          "timing_loading": 0.5800734770380221,
+          "timing_mean_us": -11878.68861205108,
+          "timing_residual_std_us": 22619.190132437823,
+          "velocity_loading": 0.543667167674369,
+          "velocity_mean": 78.2843220338983,
+          "velocity_residual_std": 34.46357935859015
+        },
+        "snare": {
+          "count": 5660,
+          "timing_loading": 0.20695027472642927,
+          "timing_mean_us": -6351.113100613272,
+          "timing_residual_std_us": 25000.0,
+          "velocity_loading": 0.6886045411656622,
+          "velocity_mean": 75.8839222614841,
+          "velocity_residual_std": 33.70726938864174
+        }
+      },
+      "phrase_timing_us": {
+        "closing": -174.79496761643364,
+        "middle": 68.24184131929346,
+        "opening": 35.34564749377373
+      },
+      "phrase_velocity": {
+        "closing": 2.835193938453832,
+        "middle": -1.4285954241410035,
+        "opening": 0.07149568667431558
+      },
+      "position_timing_us": {
+        "beat": -2305.030694773251,
+        "downbeat": -4349.549282836465,
+        "off_eighth": -3960.2070522179724,
+        "weak_sixteenth": 9250.764309246462
+      },
+      "position_velocity": {
+        "beat": 14.440026121046744,
+        "downbeat": 2.202651326184552,
+        "off_eighth": -0.0046141594095403075,
+        "weak_sixteenth": -19.34131943099692
+      },
+      "shared_timing_std_us": 21322.42838543636,
+      "shared_velocity_std": 29.935208493532215,
+      "source_genres": [
+        "blues",
+        "hiphop",
+        "reggae",
+        "soul"
+      ],
+      "tempo_timing_us": {
+        "fast": -2686.5370972859278,
+        "medium": -739.1008713729957,
+        "slow": 2208.808777456797
+      },
+      "tempo_velocity": {
+        "fast": -3.748536198088498,
+        "medium": -0.6723946405150053,
+        "slow": 2.652224597502528
+      }
+    },
+    "Loose": {
+      "hit_count": 56292,
+      "instruments": {
+        "bass": {
+          "count": 10181,
+          "timing_loading": 0.5508621949893205,
+          "timing_mean_us": -2085.9902621068177,
+          "timing_residual_std_us": 24367.127190570398,
+          "velocity_loading": 0.272092865500787,
+          "velocity_mean": 53.54886553383754,
+          "velocity_residual_std": 28.438793386165106
+        },
+        "closed_hat": {
+          "count": 10996,
+          "timing_loading": 0.3884587888240383,
+          "timing_mean_us": -9898.657355774303,
+          "timing_residual_std_us": 24128.944028922873,
+          "velocity_loading": 0.016291827693815694,
+          "velocity_mean": 66.14878137504547,
+          "velocity_residual_std": 28.127110195578627
+        },
+        "kick": {
+          "count": 10181,
+          "timing_loading": 0.5508621949893205,
+          "timing_mean_us": -5585.990262106818,
+          "timing_residual_std_us": 24367.127190570398,
+          "velocity_loading": 0.272092865500787,
+          "velocity_mean": 57.54886553383754,
+          "velocity_residual_std": 28.438793386165106
+        },
+        "open_hat": {
+          "count": 1175,
+          "timing_loading": 0.7751905830177274,
+          "timing_mean_us": -9031.189947698773,
+          "timing_residual_std_us": 19150.611683391246,
+          "velocity_loading": 0.3671681134665744,
+          "velocity_mean": 94.42212765957447,
+          "velocity_residual_std": 30.13819863118517
+        },
+        "percussion": {
+          "count": 13227,
+          "timing_loading": 0.5371720846970436,
+          "timing_mean_us": -8016.883017582738,
+          "timing_residual_std_us": 21780.161584211306,
+          "velocity_loading": 0.3629471545249027,
+          "velocity_mean": 78.7628335979436,
+          "velocity_residual_std": 29.003890880569433
+        },
+        "snare": {
+          "count": 20713,
+          "timing_loading": 0.023166235062574845,
+          "timing_mean_us": -5008.466775990503,
+          "timing_residual_std_us": 25000.0,
+          "velocity_loading": 0.4605117566029829,
+          "velocity_mean": 62.98073673538357,
+          "velocity_residual_std": 35.016343103750174
+        }
+      },
+      "phrase_timing_us": {
+        "closing": -180.93117298315977,
+        "middle": -57.9806977000408,
+        "opening": 292.8102946494627
+      },
+      "phrase_velocity": {
+        "closing": 0.8619954718573908,
+        "middle": -0.5936666980793817,
+        "opening": 0.32037991245514524
+      },
+      "position_timing_us": {
+        "beat": -6301.8540224576955,
+        "downbeat": -6431.902011391148,
+        "off_eighth": -274.96558586494353,
+        "weak_sixteenth": 8943.740675877476
+      },
+      "position_velocity": {
+        "beat": 7.807221048665399,
+        "downbeat": 3.007974413988963,
+        "off_eighth": 0.9373553676016843,
+        "weak_sixteenth": -9.78007418090459
+      },
+      "shared_timing_std_us": 22999.745428355585,
+      "shared_velocity_std": 28.7153709260358,
+      "source_genres": [
+        "blues",
+        "jazz",
+        "neworleans",
+        "soul"
+      ],
+      "tempo_timing_us": {
+        "fast": -406.3062061978932,
+        "medium": 820.3298209646313,
+        "slow": -2407.465749109138
+      },
+      "tempo_velocity": {
+        "fast": 2.7269490800379326,
+        "medium": -1.9573283732931877,
+        "slow": 0.41521814657011835
+      }
+    },
+    "Mechanical": {
+      "hit_count": 109015,
+      "instruments": {
+        "bass": {
+          "count": 21923,
+          "timing_loading": 0.7029065066248428,
+          "timing_mean_us": 56.96807332310664,
+          "timing_residual_std_us": 21107.31122256792,
+          "velocity_loading": 0.22922346175732053,
+          "velocity_mean": 66.10746704374401,
+          "velocity_residual_std": 28.718166007305427
+        },
+        "closed_hat": {
+          "count": 30084,
+          "timing_loading": 0.6179584333283883,
+          "timing_mean_us": -5468.656107736912,
+          "timing_residual_std_us": 22862.447608455925,
+          "velocity_loading": 0.03435955801372897,
+          "velocity_mean": 73.68956920622257,
+          "velocity_residual_std": 31.710591787649353
+        },
+        "kick": {
+          "count": 21923,
+          "timing_loading": 0.7029065066248428,
+          "timing_mean_us": -3443.0319266768934,
+          "timing_residual_std_us": 21107.31122256792,
+          "velocity_loading": 0.22922346175732053,
+          "velocity_mean": 70.10746704374401,
+          "velocity_residual_std": 28.718166007305427
+        },
+        "open_hat": {
+          "count": 5104,
+          "timing_loading": 0.4461656320633623,
+          "timing_mean_us": -3855.844004778209,
+          "timing_residual_std_us": 24100.428244918035,
+          "velocity_loading": 0.4313197827184728,
+          "velocity_mean": 66.5787617554859,
+          "velocity_residual_std": 42.05012854232212
+        },
+        "percussion": {
+          "count": 25903,
+          "timing_loading": 0.6803947125581772,
+          "timing_mean_us": 3675.0101754082007,
+          "timing_residual_std_us": 22134.669478524072,
+          "velocity_loading": 0.2870385019830859,
+          "velocity_mean": 76.91904412616299,
+          "velocity_residual_std": 27.29247976683153
+        },
+        "snare": {
+          "count": 26001,
+          "timing_loading": 0.3340178964640136,
+          "timing_mean_us": -1483.8214031919115,
+          "timing_residual_std_us": 25000.0,
+          "velocity_loading": 0.5558949425344945,
+          "velocity_mean": 75.88311988000461,
+          "velocity_residual_std": 34.57612903035218
+        }
+      },
+      "phrase_timing_us": {
+        "closing": -584.0048037981138,
+        "middle": 115.85009774427785,
+        "opening": 336.73200019086687
+      },
+      "phrase_velocity": {
+        "closing": 1.681043517178952,
+        "middle": -1.209330178246458,
+        "opening": 0.7519286743654474
+      },
+      "position_timing_us": {
+        "beat": -2319.905734629764,
+        "downbeat": -1576.1705079887709,
+        "off_eighth": 621.1500283776066,
+        "weak_sixteenth": 2700.834174355551
+      },
+      "position_velocity": {
+        "beat": 12.924853168133614,
+        "downbeat": 4.345574857734652,
+        "off_eighth": -2.3901097764901302,
+        "weak_sixteenth": -14.237048713073237
+      },
+      "shared_timing_std_us": 24851.851282901185,
+      "shared_velocity_std": 28.775674597218764,
+      "source_genres": [
+        "dance",
+        "pop",
+        "punk",
+        "rock"
+      ],
+      "tempo_timing_us": {
+        "fast": -5131.588794456042,
+        "medium": 3199.4153025353808,
+        "slow": -3381.668131986623
+      },
+      "tempo_velocity": {
+        "fast": -1.7025993210868837,
+        "medium": 2.588698905962796,
+        "slow": -10.749636476530204
+      }
+    },
+    "Minimal": {
+      "hit_count": 8684,
+      "instruments": {
+        "bass": {
+          "count": 1711,
+          "timing_loading": 0.641734174567535,
+          "timing_mean_us": -9248.023751483679,
+          "timing_residual_std_us": 20783.423493377224,
+          "velocity_loading": 0.07621291096761261,
+          "velocity_mean": 40.353477498538865,
+          "velocity_residual_std": 18.44813276259749
+        },
+        "closed_hat": {
+          "count": 2395,
+          "timing_loading": 0.5641216744940428,
+          "timing_mean_us": -14753.202965676732,
+          "timing_residual_std_us": 20687.535148249426,
+          "velocity_loading": 0.46462983996469254,
+          "velocity_mean": 62.75490605427975,
+          "velocity_residual_std": 28.114539919102853
+        },
+        "kick": {
+          "count": 1711,
+          "timing_loading": 0.641734174567535,
+          "timing_mean_us": -12748.023751483679,
+          "timing_residual_std_us": 20783.423493377224,
+          "velocity_loading": 0.07621291096761261,
+          "velocity_mean": 44.353477498538865,
+          "velocity_residual_std": 18.44813276259749
+        },
+        "open_hat": {
+          "count": 382,
+          "timing_loading": 0.33797681383548006,
+          "timing_mean_us": -16145.450265760504,
+          "timing_residual_std_us": 16129.472956723042,
+          "velocity_loading": 0.7652913952190032,
+          "velocity_mean": 69.10073298429319,
+          "velocity_residual_std": 29.400735676121773
+        },
+        "percussion": {
+          "count": 1085,
+          "timing_loading": 0.5967898513711319,
+          "timing_mean_us": -10887.009069726162,
+          "timing_residual_std_us": 24145.090298805164,
+          "velocity_loading": 0.32892607881937924,
+          "velocity_mean": 81.25135483870967,
+          "velocity_residual_std": 31.733137710426803
+        },
+        "snare": {
+          "count": 3111,
+          "timing_loading": 0.2082400320783572,
+          "timing_mean_us": -9182.688719740065,
+          "timing_residual_std_us": 24784.240708480145,
+          "velocity_loading": 0.7417013345159339,
+          "velocity_mean": 60.3773706203793,
+          "velocity_residual_std": 31.689037374497474
+        }
+      },
+      "phrase_timing_us": {
+        "closing": -1086.0733458409723,
+        "middle": 654.4253307487435,
+        "opening": -210.85700337779406
+      },
+      "phrase_velocity": {
+        "closing": 0.9984310691537039,
+        "middle": -0.9770549692722093,
+        "opening": 0.9227055413478247
+      },
+      "position_timing_us": {
+        "beat": -993.0114336902856,
+        "downbeat": -3330.487976706561,
+        "off_eighth": -5813.770660633586,
+        "weak_sixteenth": 8673.315161547152
+      },
+      "position_velocity": {
+        "beat": 7.901123614294797,
+        "downbeat": -5.090941008426035,
+        "off_eighth": 5.543970591513408,
+        "weak_sixteenth": -13.98357202239852
+      },
+      "shared_timing_std_us": 20655.12499921718,
+      "shared_velocity_std": 28.039884172566225,
+      "source_genres": [
+        "blues",
+        "country",
+        "pop",
+        "reggae"
+      ],
+      "tempo_timing_us": {
+        "fast": -2187.8191822411886,
+        "medium": -3019.991646422565,
+        "slow": 3715.4205048437047
+      },
+      "tempo_velocity": {
+        "fast": 0.3936235995272016,
+        "medium": 1.5895967360151517,
+        "slow": -1.1906828470774768
+      }
+    },
+    "Swing": {
+      "hit_count": 51261,
+      "instruments": {
+        "bass": {
+          "count": 9131,
+          "timing_loading": 0.5434725861434744,
+          "timing_mean_us": -815.3875805544949,
+          "timing_residual_std_us": 24381.891046163604,
+          "velocity_loading": 0.27098659576092526,
+          "velocity_mean": 55.12112583506735,
+          "velocity_residual_std": 29.378905639345838
+        },
+        "closed_hat": {
+          "count": 9463,
+          "timing_loading": 0.38889469901928486,
+          "timing_mean_us": -9011.300371697078,
+          "timing_residual_std_us": 24987.695587168346,
+          "velocity_loading": -0.023937713147341264,
+          "velocity_mean": 66.42565782521399,
+          "velocity_residual_std": 27.833019370330355
+        },
+        "kick": {
+          "count": 9131,
+          "timing_loading": 0.5434725861434744,
+          "timing_mean_us": -4315.387580554495,
+          "timing_residual_std_us": 24381.891046163604,
+          "velocity_loading": 0.27098659576092526,
+          "velocity_mean": 59.12112583506735,
+          "velocity_residual_std": 29.378905639345838
+        },
+        "open_hat": {
+          "count": 984,
+          "timing_loading": 0.7772727771586518,
+          "timing_mean_us": -6353.642478900421,
+          "timing_residual_std_us": 18348.033178710957,
+          "velocity_loading": 0.37141872907377677,
+          "velocity_mean": 95.20355691056909,
+          "velocity_residual_std": 30.15193906850977
+        },
+        "percussion": {
+          "count": 12284,
+          "timing_loading": 0.5303454627636063,
+          "timing_mean_us": -7139.968056824548,
+          "timing_residual_std_us": 21869.95879201997,
+          "velocity_loading": 0.3170025310679574,
+          "velocity_mean": 79.925113155324,
+          "velocity_residual_std": 28.428084363944187
+        },
+        "snare": {
+          "count": 19399,
+          "timing_loading": 0.016099730449760683,
+          "timing_mean_us": -4634.0816766184535,
+          "timing_residual_std_us": 25000.0,
+          "velocity_loading": 0.44424820397242765,
+          "velocity_mean": 62.12995515232744,
+          "velocity_residual_std": 34.87266115898087
+        }
+      },
+      "phrase_timing_us": {
+        "closing": -94.09470859327841,
+        "middle": -13.492187099049193,
+        "opening": 118.85267981379282
+      },
+      "phrase_velocity": {
+        "closing": 0.7986475266922307,
+        "middle": -0.5625841327663229,
+        "opening": 0.32615553390548746
+      },
+      "position_timing_us": {
+        "beat": -6403.582008292978,
+        "downbeat": -6571.812249967442,
+        "off_eighth": 486.4844660376744,
+        "weak_sixteenth": 7923.042995104592
+      },
+      "position_velocity": {
+        "beat": 7.1491179775104134,
+        "downbeat": 3.507745158895928,
+        "off_eighth": 1.8491455438354039,
+        "weak_sixteenth": -9.519074201207767
+      },
+      "shared_timing_std_us": 23325.09711553614,
+      "shared_velocity_std": 28.726993236959522,
+      "source_genres": [
+        "blues",
+        "jazz",
+        "neworleans"
+      ],
+      "tempo_timing_us": {
+        "fast": -1013.4129622166619,
+        "medium": 1566.306062427877,
+        "slow": -3246.8300119997366
+      },
+      "tempo_velocity": {
+        "fast": 1.5893804099724687,
+        "medium": -1.1760468156690909,
+        "slow": 0.10438154292154954
+      }
+    }
+  },
+  "validation": {
+    "files": 46,
+    "hits": 39453,
+    "split": "validation beats in 4/4",
+    "timing_mae_us_learned_mean": 20118.286107648066,
+    "timing_mae_us_rule_zero": 22042.03021970461,
+    "velocity_mae_learned_mean": 27.9325260862511,
+    "velocity_mae_rule_fixed": 35.427470661293185
+  }
+}

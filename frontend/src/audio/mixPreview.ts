@@ -1,20 +1,20 @@
 import * as Tone from 'tone'
 import { prepareAudioOutput } from './audioOutput'
-import type { BassPattern, GroovePattern, Instrument } from '../types/generated'
+import type { BassPattern, GroovePattern } from '../types/generated'
 import { claimPreview, releasePreview } from './previewCoordinator'
-
-type DrumSynth = Tone.MembraneSynth | Tone.NoiseSynth | Tone.PolySynth
+import { DrumKitVoice } from './drumKit'
+import { drumKitProfile, type DrumSoundId } from './drumKitProfile'
 
 let playing = false
-let drums: Partial<Record<Instrument, DrumSynth>> | null = null
+let drumKit: DrumKitVoice | null = null
 let bass: Tone.MonoSynth | Tone.PolySynth | null = null
 
 function tickSeconds(tick: number, bpm: number) { return tick * 60 / (bpm * 960) }
 
 function dispose() {
-  Object.values(drums ?? {}).forEach(synth => synth?.dispose())
+  drumKit?.dispose()
   bass?.dispose()
-  drums = null
+  drumKit = null
   bass = null
 }
 
@@ -44,31 +44,23 @@ export async function toggleMixPreview(
   claimPreview('mix', () => stop(onState))
   try { await prepareAudioOutput() } catch (cause) { releasePreview('mix'); throw cause }
   dispose()
-  drums = {
-    kick: new Tone.MembraneSynth({ pitchDecay: .04, octaves: 7 }).toDestination(),
-    snare: new Tone.NoiseSynth({ noise: { type: 'white' }, envelope: { attack: .001, decay: .12, sustain: 0 } }).toDestination(),
-    closed_hat: new Tone.PolySynth(Tone.Synth, { oscillator: { type: 'square8' }, envelope: { attack: .001, decay: .035, sustain: 0, release: .01 }, volume: -18 }).toDestination(),
-    open_hat: new Tone.PolySynth(Tone.Synth, { oscillator: { type: 'square8' }, envelope: { attack: .001, decay: .2, sustain: .03, release: .08 }, volume: -18 }).toDestination(),
-    percussion: new Tone.MembraneSynth({ pitchDecay: .015, octaves: 3 }).toDestination(),
-  }
+  const soundProfile = drumKitProfile(groove.metadata.render_profile as DrumSoundId)
+  const nextKit = new DrumKitVoice(groove.metadata.render_profile as DrumSoundId)
+  drumKit = nextKit
+  try { await nextKit.ready() } catch (cause) { dispose(); releasePreview('mix'); throw cause }
   bass = bassPattern.voice_policy === 'allow_overlap'
-    ? new Tone.PolySynth(Tone.Synth, { oscillator: { type: 'triangle' }, envelope: { attack: .008, decay: .12, sustain: .48, release: .12 }, volume: -5 }).toDestination()
-    : new Tone.MonoSynth({ oscillator: { type: 'triangle' }, envelope: { attack: .008, decay: .12, sustain: .48, release: .12 }, volume: -5 }).toDestination()
+    ? new Tone.PolySynth(Tone.Synth, { oscillator: { type: soundProfile.warmBass ? 'sine' : 'triangle' }, envelope: { attack: soundProfile.warmBass ? .012 : .008, decay: soundProfile.warmBass ? .2 : .12, sustain: soundProfile.warmBass ? .54 : .48, release: soundProfile.warmBass ? .22 : .12 }, volume: -5 }).connect(nextKit.input)
+    : new Tone.MonoSynth({ oscillator: { type: soundProfile.warmBass ? 'sine' : 'triangle' }, envelope: { attack: soundProfile.warmBass ? .012 : .008, decay: soundProfile.warmBass ? .2 : .12, sustain: soundProfile.warmBass ? .54 : .48, release: soundProfile.warmBass ? .22 : .12 }, volume: -5 }).connect(nextKit.input)
 
   const transport = Tone.getTransport()
   transport.cancel()
   transport.seconds = 0
   for (const event of groove.events) {
     if (event.instrument === 'bass') continue
+    const instrument = event.instrument
     const onset = Math.max(0, tickSeconds(event.grid_tick + event.structural_offset_tick, groove.bpm) + event.micro_offset_us / 1_000_000)
     transport.schedule(time => {
-      const synth = drums?.[event.instrument]
-      if (!synth) return
-      const duration = Math.max(.02, tickSeconds(event.duration_tick, groove.bpm))
-      const gain = event.velocity / 127
-      if (event.instrument === 'snare') (synth as Tone.NoiseSynth).triggerAttackRelease(duration, time, gain)
-      else if (event.instrument.includes('hat')) (synth as Tone.PolySynth).triggerAttackRelease('C7', duration, time, gain)
-      else (synth as Tone.MembraneSynth).triggerAttackRelease('C1', duration, time, gain)
+      drumKit?.trigger(instrument, time, event.velocity / 127, event.event_id)
     }, onset)
   }
   for (const event of bassPattern.events) {

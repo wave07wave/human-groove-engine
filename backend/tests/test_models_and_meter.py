@@ -39,6 +39,31 @@ def test_five_four_and_five_eight_have_distinct_time_scales():
     assert strong_positions(five_eight) == [0, 1440]
 
 
+@pytest.mark.parametrize(
+    "subdivisions,step_tick",
+    [(2, 480), (3, 320), (4, 240), (6, 160), (8, 120)],
+)
+def test_exact_grid_resolutions(subdivisions, step_tick):
+    value = MeterDefinition(
+        numerator=4,
+        denominator=4,
+        grouping=[2, 2],
+        subdivisions_per_quarter=subdivisions,
+    )
+    assert value.subdivision_tick == step_tick
+    assert value.bar_ticks % value.subdivision_tick == 0
+
+
+def test_grid_must_fit_bar_without_truncation():
+    with pytest.raises(ValidationError):
+        MeterDefinition(
+            numerator=5,
+            denominator=8,
+            grouping=[3, 2],
+            subdivisions_per_quarter=3,
+        )
+
+
 def test_event_validation_rejects_invalid_data():
     with pytest.raises(ValidationError):
         GrooveEvent(instrument=InstrumentID.KICK, grid_tick=-1, duration_tick=0, velocity=200)

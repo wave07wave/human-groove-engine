@@ -22,6 +22,10 @@ function stop(onState: (value: boolean) => void) {
   playing = false; onState(false)
 }
 
+export function stopBassPreview(onState: (value: boolean) => void = () => undefined) {
+  if (playing) stop(onState)
+}
+
 function tickSeconds(tick: number, bpm: number) { return tick * 60 / (bpm * 960) }
 
 function articulationPerformance(event: BassPattern['events'][number], bpm: number) {

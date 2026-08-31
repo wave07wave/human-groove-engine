@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class UnitModel(BaseModel):
@@ -47,11 +47,33 @@ class GroovePriority(UnitModel):
     )
 
 
+class EmbodiedIntent(UnitModel):
+    """Optional, explainable controls for the embodied groove research layer."""
+
+    challenge: float = Field(0.0, ge=0, le=1)
+    renewal: float = Field(0.0, ge=0, le=1)
+    timing_coherence: float = Field(0.7, ge=0, le=1)
+    low_end_motion: float = Field(0.6, ge=0, le=1)
+    meter_familiarity: float = Field(0.5, ge=0, le=1)
+    style_familiarity: float = Field(0.5, ge=0, le=1)
+
+
 class GrooveIntent(BaseModel):
     target_dna: GrooveDNA = Field(default_factory=GrooveDNA)
     tolerance: GrooveTolerance = Field(default_factory=GrooveTolerance)
     priorities: GroovePriority = Field(default_factory=GroovePriority)
     movement_target: str = "bounce"
+    phrase_energy_curve: list[float] = Field(default_factory=list, max_length=64)
+    embodied: EmbodiedIntent = Field(default_factory=EmbodiedIntent)
+
+    @field_validator("phrase_energy_curve")
+    @classmethod
+    def valid_energy_curve(cls, values: list[float]) -> list[float]:
+        if values and len(values) < 2:
+            raise ValueError("phrase energy curve requires at least two points")
+        if any(not 0 <= value <= 1 for value in values):
+            raise ValueError("phrase energy values must be between zero and one")
+        return values
 
 
 class ComplexityVector(UnitModel):

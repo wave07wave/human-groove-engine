@@ -1,0 +1,14 @@
+{
+  "profile_id": "vintage-dust-v1",
+  "version": "1.0.0",
+  "display_name": "Vintage Dust",
+  "sample_rate": 8000,
+  "instruments": {
+    "kick": {"oscillator":"sine","frequency_hz":61,"attack_ms":3.2,"decay_ms":205,"gain":0.68,"transient_mix":0.13,"noise_mix":0.06,"band":"low","low_end_weight":0.88},
+    "snare": {"oscillator":"noise","frequency_hz":165,"attack_ms":1.8,"decay_ms":230,"gain":0.42,"transient_mix":0.15,"noise_mix":0.58,"band":"mid","low_end_weight":0.10},
+    "closed_hat": {"oscillator":"noise","frequency_hz":2450,"attack_ms":0.8,"decay_ms":68,"gain":0.13,"transient_mix":0.08,"noise_mix":0.74,"band":"high","low_end_weight":0.0},
+    "open_hat": {"oscillator":"noise","frequency_hz":2200,"attack_ms":1.1,"decay_ms":380,"gain":0.15,"transient_mix":0.06,"noise_mix":0.72,"band":"high","low_end_weight":0.0},
+    "percussion": {"oscillator":"triangle","frequency_hz":190,"attack_ms":2.8,"decay_ms":230,"gain":0.28,"transient_mix":0.12,"noise_mix":0.12,"band":"mid","low_end_weight":0.20},
+    "bass": {"oscillator":"triangle","frequency_hz":61,"attack_ms":12.0,"decay_ms":470,"gain":0.46,"transient_mix":0.01,"noise_mix":0.01,"band":"low","low_end_weight":0.94}
+  }
+}

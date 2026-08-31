@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 
-from app.config import MAX_MICROTIMING_US, PPQ
+from app.config import MAX_MICROTIMING_US
 from app.random.seeds import HierarchicalRNG
 
 from .analysis import analyze_bass_pattern
@@ -187,7 +187,7 @@ def mutate_bass_pattern(
                 RhythmicRole.RECOVERY,
                 )
             ):
-                step = PPQ // 4
+                step = result.meter.subdivision_tick
                 direction = -1 if rng.random() < 0.5 else 1
                 bar_start = bar * result.meter.bar_ticks
                 valid_start = max(bar_start, -event.structural_offset_tick)

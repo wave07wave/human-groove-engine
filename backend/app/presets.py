@@ -19,6 +19,33 @@ PRESETS: dict[str, GrooveIntent] = {
         recovery_strength=0.84,
         density=0.62,
     ),
+    "Hip Hop": _intent(
+        pulse_stability=0.88,
+        syncopation=0.58,
+        density=0.48,
+        repetition=0.8,
+        microtiming=0.56,
+        low_end_anchor=0.84,
+        ghost_density=0.34,
+    ),
+    "House": _intent(
+        pulse_stability=0.94,
+        beat_salience=0.92,
+        density=0.68,
+        repetition=0.86,
+        interlock=0.82,
+        low_end_anchor=0.9,
+        variation=0.3,
+    ),
+    "Rock": _intent(
+        pulse_stability=0.92,
+        beat_salience=0.88,
+        density=0.62,
+        low_end_anchor=0.88,
+        motor_affordance=0.9,
+        velocity_contrast=0.64,
+        recovery_strength=0.82,
+    ),
     "Laid Back": _intent(
         pulse_stability=0.82, microtiming=0.58, swing=0.28, syncopation=0.42, density=0.42
     ),

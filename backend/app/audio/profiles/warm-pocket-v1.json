@@ -1,0 +1,14 @@
+{
+  "profile_id": "warm-pocket-v1",
+  "version": "1.0.0",
+  "display_name": "Warm Pocket",
+  "sample_rate": 8000,
+  "instruments": {
+    "kick": {"oscillator":"sine","frequency_hz":52,"attack_ms":3.0,"decay_ms":290,"gain":0.70,"transient_mix":0.20,"noise_mix":0.02,"band":"low","low_end_weight":1.0},
+    "snare": {"oscillator":"noise","frequency_hz":170,"attack_ms":1.5,"decay_ms":180,"gain":0.44,"transient_mix":0.20,"noise_mix":0.62,"band":"mid","low_end_weight":0.08},
+    "closed_hat": {"oscillator":"noise","frequency_hz":2900,"attack_ms":0.7,"decay_ms":55,"gain":0.15,"transient_mix":0.10,"noise_mix":0.80,"band":"high","low_end_weight":0.0},
+    "open_hat": {"oscillator":"noise","frequency_hz":2500,"attack_ms":1.0,"decay_ms":310,"gain":0.17,"transient_mix":0.08,"noise_mix":0.78,"band":"high","low_end_weight":0.0},
+    "percussion": {"oscillator":"triangle","frequency_hz":205,"attack_ms":2.5,"decay_ms":190,"gain":0.30,"transient_mix":0.16,"noise_mix":0.08,"band":"mid","low_end_weight":0.22},
+    "bass": {"oscillator":"sine","frequency_hz":55,"attack_ms":11.0,"decay_ms":520,"gain":0.48,"transient_mix":0.02,"noise_mix":0.0,"band":"low","low_end_weight":1.0}
+  }
+}

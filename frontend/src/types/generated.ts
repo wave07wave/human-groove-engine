@@ -8,8 +8,24 @@ export type EventRole = Schema['EventRole']
 export type GrooveDNA = Schema['GrooveDNA']
 export type MeterDefinition = Schema['MeterDefinition']
 export type ListenerAnalysis = Schema['ListenerAnalysis']
+export type EmbodiedIntent = { challenge:number, renewal:number, timing_coherence:number, low_end_motion:number, meter_familiarity:number, style_familiarity:number }
+type MetricLevel = { clarity:number, phase_stability:number, activity:number }
+export type EmbodiedGrooveFeatures = {
+  schema_version:string
+  motor_scaffold:{ subdivision:MetricLevel, tactus:MetricLevel, half_time:MetricLevel, bar_cycle:MetricLevel }
+  prediction_error:{ event_surprise:number, omission_surprise:number, concentration:number, recoverable_ratio:number, context_confidence:number }
+  timing_coherence:{ lane_offsets_ms:Record<string,number>, within_lane_dispersion:number, pairwise_phase_coherence:number, shared_drift:number, independent_jitter:number, coherence:number }
+  low_end_motion:{ symbolic_coupling:number, spectral_flux_50_100hz:number|null, onset_coherence:number|null, envelope_cycle:number|null, render_applicable:boolean }
+  phrase_renewal:{ motif_memory:number, layer_entry_lift:number, challenge_strength:number, reentry_strength:number }
+  estimates:{ urge_to_move_prior:number, pleasure_prior:number, uncertainty:number, caveat:string }
+}
+export type MotorTempoProfile = { bpm:number, interval_ms:number, dispersion:number, confidence:number, tempo_aliases:number[], accepted_taps:number, caveat:string }
+export type EmbodiedOperatorSummary = { operator_arm:string, evaluations:number, average_urge_to_move:number, average_pleasure:number, average_beat_clarity:number }
+export type EmbodiedEvaluationSummary = { total_evaluations:number, operator_arms:EmbodiedOperatorSummary[], minimum_evaluations_per_arm:number, sufficient_for_personal_comparison:boolean, caveat:string }
+export type EmbodiedEvaluationResult = { accepted:boolean, evidence_class:'self_report'|'tap'|'motion', caveat:string }
 export type GrooveAnalysis = Omit<Schema['GrooveAnalysis'], 'confidence'> & {
   confidence: Schema['AnalysisConfidence']
+  embodied?: EmbodiedGrooveFeatures | null
 }
 
 export type GrooveIntent = Omit<Schema['GrooveIntent'], 'target_dna' | 'tolerance' | 'priorities'> & {
@@ -21,6 +37,7 @@ export type GrooveIntent = Omit<Schema['GrooveIntent'], 'target_dna' | 'toleranc
   priorities: Omit<Schema['GroovePriority'], 'weights'> & {
     weights: Record<string, number>
   }
+  embodied?: EmbodiedIntent
 }
 
 export type GrooveEvent = Omit<Schema['GrooveEvent'], 'event_id' | 'role_tags' | 'pitch' | 'timbre_variant' | 'choke_group'> & {
@@ -40,10 +57,34 @@ export type GroovePattern = Omit<PatternOutput, 'events' | 'intent' | 'analysis'
   bar_locks: number[]
 }
 
-export type GenerateRequest = Omit<Schema['GenerateRequest'], 'meter' | 'intent'> & {
+export type GenerateRequest = Omit<Schema['GenerateRequest'], 'meter' | 'intent' | 'render_profile'> & {
   meter: MeterDefinition
   intent: GrooveIntent
+  render_profile: 'studio-tight-v1' | 'warm-pocket-v1' | 'club-punch-v1' | 'vintage-dust-v1'
+  anonymous_session_id?: string
 }
+export type GroovePreferenceSummary = Schema['GroovePreferenceSummary']
+export type TapAnalysis = Omit<Schema['TapAnalysis'], 'suggested_intent'> & {
+  suggested_intent: GrooveIntent
+}
+export type MidiReferenceAnalysis = Omit<Schema['MidiReferenceAnalysis'], 'suggested_intent'> & {
+  suggested_intent: GrooveIntent
+}
+export type IntentTransformResponse = Omit<Schema['IntentTransformResponse'], 'intent' | 'changes'> & {
+  intent: GrooveIntent
+  changes: Schema['IntentChange'][]
+}
+export type GenerateResponse = Omit<Schema['GenerateResponse'], 'candidates'> & {
+  candidates: GroovePattern[]
+  preference_profile: GroovePreferenceSummary | null
+}
+export type ParticipantGroup = Schema['BlindSessionRequest']['participant_group']
+export type BlindSession = Omit<Schema['BlindSession'], 'candidates'> & {
+  candidates: (Omit<Schema['BlindCandidate'], 'pattern'> & { pattern: GroovePattern })[]
+}
+export type BlindResponseResult = Schema['BlindResponseResult']
+export type EvaluationSummary = Schema['EvaluationSummary']
+export type QualityAuditReport = Schema['QualityAuditReport']
 export type PresetsResponse = Omit<Schema['PresetsResponse'], 'built_in' | 'user'> & {
   built_in: Record<string, GrooveIntent>
   user: Record<string, GrooveIntent>

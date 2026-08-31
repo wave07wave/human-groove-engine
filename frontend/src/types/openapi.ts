@@ -90,6 +90,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/evaluation/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start Blind Evaluation */
+        post: operations["start_blind_evaluation_api_v1_evaluation_sessions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/evaluation/responses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit Blind Evaluation */
+        post: operations["submit_blind_evaluation_api_v1_evaluation_responses_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/evaluation/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Blind Evaluation Summary */
+        get: operations["blind_evaluation_summary_api_v1_evaluation_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/quality/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Quality Audit */
+        get: operations["quality_audit_api_v1_quality_audit_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/presets": {
         parameters: {
             query?: never;
@@ -102,6 +170,57 @@ export interface paths {
         put?: never;
         /** Save Preset */
         post: operations["save_preset_api_v1_presets_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reference/taps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Tap Reference */
+        post: operations["tap_reference_api_v1_reference_taps_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reference/midi": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Midi Reference */
+        post: operations["midi_reference_api_v1_reference_midi_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/intent/transform": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Language Transform */
+        post: operations["language_transform_api_v1_intent_transform_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -288,6 +407,23 @@ export interface paths {
         };
         /** Generation History */
         get: operations["generation_history_api_v1_bass_history_generations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bass/history/generation-records/{generation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Generation Record Pattern */
+        get: operations["generation_record_pattern_api_v1_bass_history_generation_records__generation_id__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -880,6 +1016,8 @@ export interface components {
         };
         /** BassGenerationRecord */
         BassGenerationRecord: {
+            /** Generation Id */
+            generation_id: number;
             /** Pattern Id */
             pattern_id: string;
             /** Name */
@@ -1200,7 +1338,7 @@ export interface components {
         BassPatternMetadata: {
             /**
              * Engine Version
-             * @default 0.1.0
+             * @default 0.10.0
              */
             engine_version: string;
             /**
@@ -1210,12 +1348,12 @@ export interface components {
             schema_version: string;
             /**
              * Analysis Version
-             * @default 1.0
+             * @default 1.4
              */
             analysis_version: string;
             /**
              * Preset Version
-             * @default 1.0
+             * @default 1.1
              */
             preset_version: string;
             /**
@@ -1225,6 +1363,11 @@ export interface components {
             rng_algorithm: string;
             /** Master Seed */
             master_seed: number;
+            /**
+             * Preset
+             * @default Supportive
+             */
+            preset: string;
             /**
              * Candidate Index
              * @default 0
@@ -1237,6 +1380,18 @@ export interface components {
             revision: number;
             /** Resolved Intent Notes */
             resolved_intent_notes?: string[];
+            /**
+             * Preference Guided
+             * @default false
+             */
+            preference_guided: boolean;
+            /**
+             * Preference Guidance Strength
+             * @default 0
+             */
+            preference_guidance_strength: number;
+            /** Preference Guided Features */
+            preference_guided_features?: string[];
         };
         /** BassPreferenceRecord */
         BassPreferenceRecord: {
@@ -1248,9 +1403,15 @@ export interface components {
              * Selected
              * @enum {string}
              */
-            selected: "A" | "B";
+            selected: "A" | "B" | "tie";
             /** Display Order */
             display_order: string[];
+            /** Comparison Id */
+            comparison_id?: string | null;
+            /** Decision Time Ms */
+            decision_time_ms?: number | null;
+            /** Profile Scope */
+            profile_scope?: string | null;
             /** Created At */
             created_at: string;
             /** Schema Version */
@@ -1260,15 +1421,42 @@ export interface components {
         BassPreferenceRequest: {
             candidate_a: components["schemas"]["BassPattern-Input"];
             candidate_b: components["schemas"]["BassPattern-Input"];
-            /** Selected */
-            selected: string;
+            /**
+             * Selected
+             * @enum {string}
+             */
+            selected: "A" | "B" | "tie";
             /** Display Order */
             display_order?: string[];
+            /** Comparison Id */
+            comparison_id?: string;
+            /** Decision Time Ms */
+            decision_time_ms?: number | null;
         };
         /** BassPreferenceSummary */
         BassPreferenceSummary: {
             /** Comparisons */
             comparisons: number;
+            /**
+             * Decisive Comparisons
+             * @default 0
+             */
+            decisive_comparisons: number;
+            /**
+             * Ties
+             * @default 0
+             */
+            ties: number;
+            /**
+             * Effective Comparisons
+             * @default 0
+             */
+            effective_comparisons: number;
+            /**
+             * Learning Confidence
+             * @default 0
+             */
+            learning_confidence: number;
             /** Personal Weight */
             personal_weight: number;
             /** Feature Weights */
@@ -1279,6 +1467,8 @@ export interface components {
             preferred_ranges?: {
                 [key: string]: components["schemas"]["PreferenceRange"];
             };
+            /** Profile Scope */
+            profile_scope?: string | null;
             /**
              * Schema Version
              * @default 1.0
@@ -1435,6 +1625,106 @@ export interface components {
          * @enum {string}
          */
         BassVoicePolicy: "monophonic_retrigger" | "monophonic_legato" | "allow_overlap";
+        /** BlindCandidate */
+        BlindCandidate: {
+            /**
+             * Position
+             * @enum {string}
+             */
+            position: "left" | "right";
+            pattern: components["schemas"]["GroovePattern-Output"];
+        };
+        /** BlindResponseRequest */
+        BlindResponseRequest: {
+            /** Session Id */
+            session_id: string;
+            /**
+             * Selected
+             * @enum {string}
+             */
+            selected: "left" | "right" | "tie";
+            /** Decision Time Ms */
+            decision_time_ms: number;
+            /**
+             * Saved Choice
+             * @default none
+             * @enum {string}
+             */
+            saved_choice: "left" | "right" | "none";
+        };
+        /** BlindResponseResult */
+        BlindResponseResult: {
+            /**
+             * Accepted
+             * @default true
+             */
+            accepted: boolean;
+            /**
+             * Selected Variant
+             * @enum {string}
+             */
+            selected_variant: "learned" | "rule" | "tie";
+            /**
+             * Left Variant
+             * @enum {string}
+             */
+            left_variant: "learned" | "rule";
+            /**
+             * Right Variant
+             * @enum {string}
+             */
+            right_variant: "learned" | "rule";
+        };
+        /** BlindSession */
+        BlindSession: {
+            /** Session Id */
+            session_id: string;
+            /**
+             * Participant Group
+             * @enum {string}
+             */
+            participant_group: "producer" | "drummer" | "general" | "undisclosed";
+            /**
+             * Started At
+             * Format: date-time
+             */
+            started_at: string;
+            /** Study Run Id */
+            study_run_id: string;
+            /** Trial Index */
+            trial_index: number;
+            /**
+             * Trials In Block
+             * @default 6
+             */
+            trials_in_block: number;
+            /** Candidates */
+            candidates: components["schemas"]["BlindCandidate"][];
+            /**
+             * Instructions
+             * @default Listen to both candidates through the same playback chain, then choose the groove you prefer. The performance conditions remain hidden until the response is submitted.
+             */
+            instructions: string;
+        };
+        /** BlindSessionRequest */
+        BlindSessionRequest: {
+            /**
+             * Participant Group
+             * @default undisclosed
+             * @enum {string}
+             */
+            participant_group: "producer" | "drummer" | "general" | "undisclosed";
+            /** Consent */
+            consent: boolean;
+            generation: components["schemas"]["GenerateRequest"];
+            /** Study Run Id */
+            study_run_id?: string;
+            /**
+             * Trial Index
+             * @default 0
+             */
+            trial_index: number;
+        };
         /** Chord */
         Chord: {
             root: components["schemas"]["SpelledPitchClass"];
@@ -1459,6 +1749,21 @@ export interface components {
          * @enum {string}
          */
         ConnectionType: "normal" | "staccato" | "legato" | "tenuto";
+        /** ControlResponseAudit */
+        ControlResponseAudit: {
+            /** Dimension */
+            dimension: string;
+            /** Low Mean */
+            low_mean: number;
+            /** High Mean */
+            high_mean: number;
+            /** Delta */
+            delta: number;
+            /** Minimum Delta */
+            minimum_delta: number;
+            /** Passed */
+            passed: boolean;
+        };
         /** DerivedBassDNA */
         DerivedBassDNA: {
             /**
@@ -1514,11 +1819,88 @@ export interface components {
              */
             timing_character_strength: number;
         };
+        /** DeterminismAudit */
+        DeterminismAudit: {
+            /** Cases */
+            cases: number;
+            /** Mismatches */
+            mismatches: number;
+            /** Passed */
+            passed: boolean;
+        };
+        /** DiversityAudit */
+        DiversityAudit: {
+            /** Comparisons */
+            comparisons: number;
+            /** Mean Distance */
+            mean_distance: number;
+            /** Minimum Distance */
+            minimum_distance: number;
+            /** Required Mean Distance */
+            required_mean_distance: number;
+            /** Required Minimum Distance */
+            required_minimum_distance: number;
+            /** Passed */
+            passed: boolean;
+        };
         /**
          * DurationStyle
          * @enum {string}
          */
         DurationStyle: "short" | "medium" | "long" | "legato" | "staccato" | "overlap" | "choke";
+        /** EvaluationGroupSummary */
+        EvaluationGroupSummary: {
+            /**
+             * Participant Group
+             * @enum {string}
+             */
+            participant_group: "producer" | "drummer" | "general" | "undisclosed";
+            /** Comparisons */
+            comparisons: number;
+            /** Completed Blocks */
+            completed_blocks: number;
+            /** Learned Wins */
+            learned_wins: number;
+            /** Rule Wins */
+            rule_wins: number;
+            /** Ties */
+            ties: number;
+            /** Learned Win Rate */
+            learned_win_rate: number;
+            /** Confidence Low */
+            confidence_low: number;
+            /** Confidence High */
+            confidence_high: number;
+            /** Median Decision Ms */
+            median_decision_ms?: number | null;
+            /** Saved Rate */
+            saved_rate: number;
+        };
+        /** EvaluationSummary */
+        EvaluationSummary: {
+            /** Completed */
+            completed: number;
+            /** Groups */
+            groups: components["schemas"]["EvaluationGroupSummary"][];
+            /**
+             * Minimum Blocks Per Declared Group
+             * @default 20
+             */
+            minimum_blocks_per_declared_group: number;
+            /**
+             * Verdict
+             * @enum {string}
+             */
+            verdict: "collecting" | "inconclusive" | "learned_supported" | "rule_supported";
+            /** Perceptual Claim Allowed */
+            perceptual_claim_allowed: boolean;
+            /** Eligible Repeat Pairs */
+            eligible_repeat_pairs: number;
+            /** Repeat Consistency */
+            repeat_consistency?: number | null;
+            /** Caveat */
+            caveat: string;
+        };
         /** EventLocks */
         EventLocks: {
             /**
@@ -1597,6 +1979,18 @@ export interface components {
              */
             mode: "preview" | "high_quality";
             /**
+             * Performance Mode
+             * @default auto
+             * @enum {string}
+             */
+            performance_mode: "auto" | "rule";
+            /**
+             * Render Profile
+             * @default studio-tight-v1
+             * @enum {string}
+             */
+            render_profile: "studio-tight-v1" | "warm-pocket-v1" | "off";
+            /**
              * Candidate Count
              * @default 4
              */
@@ -1606,6 +2000,7 @@ export interface components {
         GenerateResponse: {
             /** Candidates */
             candidates: components["schemas"]["GroovePattern-Output"][];
+            preference_profile?: components["schemas"]["GroovePreferenceSummary"] | null;
         };
         /** GrooveAnalysis */
         GrooveAnalysis: {
@@ -1622,6 +2017,7 @@ export interface components {
              * @default 0
              */
             fitness: number;
+            rendered_audio?: components["schemas"]["RenderedAudioAnalysis"] | null;
         };
         /** GrooveContext */
         "GrooveContext-Input": {
@@ -1829,6 +2225,8 @@ export interface components {
              * @default bounce
              */
             movement_target: string;
+            /** Phrase Energy Curve */
+            phrase_energy_curve?: number[];
         };
         /** GroovePattern */
         "GroovePattern-Input": {
@@ -1877,6 +2275,67 @@ export interface components {
             instrument_locks?: components["schemas"]["InstrumentID"][];
             /** Bar Locks */
             bar_locks?: number[];
+        };
+        /** GroovePreferenceRange */
+        GroovePreferenceRange: {
+            /** Mean */
+            mean: number;
+            /** Low */
+            low: number;
+            /** High */
+            high: number;
+            /** Uncertainty */
+            uncertainty: number;
+            /** Observations */
+            observations: number;
+            /**
+             * Evidence
+             * @description Evidence that selected candidates were closer to this range than rejected ones
+             * @default 0
+             */
+            evidence?: number;
+        };
+        /** GroovePreferenceSummary */
+        GroovePreferenceSummary: {
+            /** Comparisons */
+            comparisons: number;
+            /**
+             * Decisive Comparisons
+             * @default 0
+             */
+            decisive_comparisons: number;
+            /**
+             * Ties
+             * @default 0
+             */
+            ties: number;
+            /**
+             * Effective Comparisons
+             * @default 0
+             */
+            effective_comparisons: number;
+            /**
+             * Learning Confidence
+             * @default 0
+             */
+            learning_confidence: number;
+            /** Personal Weight */
+            personal_weight: number;
+            /** Feature Weights */
+            feature_weights?: {
+                [key: string]: number;
+            };
+            /** Preferred Ranges */
+            preferred_ranges?: {
+                [key: string]: components["schemas"]["GroovePreferenceRange"];
+            };
+            /** Profile Scope */
+            profile_scope?: string | null;
+            /**
+             * Schema Version
+             * @default 1.0
+             */
+            schema_version: string;
         };
         /** GroovePriority */
         GroovePriority: {
@@ -1950,6 +2409,35 @@ export interface components {
          * @enum {string}
          */
         IntegrationMode: "follow" | "negotiate" | "co_create";
+        /** IntentChange */
+        IntentChange: {
+            /** Dimension */
+            dimension: string;
+            /** Before */
+            before: number | string;
+            /** After */
+            after: number | string;
+            /** Reason */
+            reason: string;
+        };
+        /** IntentTransformRequest */
+        IntentTransformRequest: {
+            /** Text */
+            text: string;
+            current_intent?: components["schemas"]["GrooveIntent"];
+        };
+        /** IntentTransformResponse */
+        IntentTransformResponse: {
+            intent: components["schemas"]["GrooveIntent"];
+            /** Suggested Style */
+            suggested_style?: string | null;
+            /** Changes */
+            changes?: components["schemas"]["IntentChange"][];
+            /** Confidence */
+            confidence: number;
+            /** Message */
+            message: string;
+        };
         /** JointChange */
         JointChange: {
             /** Target */
@@ -1986,6 +2474,11 @@ export interface components {
              * @default 4
              */
             candidate_count: number;
+            /**
+             * Reference Render Analysis
+             * @default false
+             */
+            reference_render_analysis: boolean;
         };
         /** JointGenerateResponse */
         JointGenerateResponse: {
@@ -2004,6 +2497,7 @@ export interface components {
             change_cost: number;
             /** Complexity Fit */
             complexity_fit: number;
+            rendered_audio?: components["schemas"]["RenderedAudioAnalysis"] | null;
             /** Changes */
             changes?: components["schemas"]["JointChange"][];
         };
@@ -2032,6 +2526,19 @@ export interface components {
              * @default 100
              */
             velocity: number;
+        };
+        /** LatencyAudit */
+        LatencyAudit: {
+            /** Samples */
+            samples: number;
+            /** Median Seconds */
+            median_seconds: number;
+            /** P95 Seconds */
+            p95_seconds: number;
+            /** Maximum P95 Seconds */
+            maximum_p95_seconds: number;
+            /** Passed */
+            passed: boolean;
         };
         /** ListenerAnalysis */
         ListenerAnalysis: {
@@ -2089,6 +2596,35 @@ export interface components {
              */
             applicable: boolean;
         };
+        /** MidiReferenceAnalysis */
+        MidiReferenceAnalysis: {
+            /** Filename */
+            filename: string;
+            /** Bpm */
+            bpm: number;
+            meter: components["schemas"]["MeterDefinition"];
+            /** Bars */
+            bars: number;
+            /** Hit Count */
+            hit_count: number;
+            measured_dna: components["schemas"]["GrooveDNA"];
+            suggested_intent: components["schemas"]["GrooveIntent"];
+            /** Confidence */
+            confidence: number;
+            /** Warnings */
+            warnings?: string[];
+        };
+        /** MidiReferenceRequest */
+        MidiReferenceRequest: {
+            /**
+             * Filename
+             * @default reference.mid
+             */
+            filename: string;
+            /** Midi Base64 */
+            midi_base64: string;
+            current_intent?: components["schemas"]["GrooveIntent"];
+        };
         /** MutateRequest */
         MutateRequest: {
             pattern: components["schemas"]["GroovePattern-Input"];
@@ -2111,12 +2647,12 @@ export interface components {
         PatternMetadata: {
             /**
              * Engine Version
-             * @default 0.1.0
+             * @default 0.10.0
              */
             engine_version: string;
             /**
              * Analysis Version
-             * @default 1.0
+             * @default 1.4
              */
             analysis_version: string;
             /**
@@ -2126,7 +2662,7 @@ export interface components {
             schema_version: string;
             /**
              * Preset Version
-             * @default 1.0
+             * @default 1.1
              */
             preset_version: string;
             /**
@@ -2136,6 +2672,38 @@ export interface components {
             rng_algorithm: string;
             /** Master Seed */
             master_seed: number;
+            /**
+             * Style
+             * @default Balanced
+             */
+            style: string;
+            /**
+             * Performance Model
+             * @default rule-pocket-v1
+             */
+            performance_model: string;
+            /**
+             * Performance Model Version
+             * @default 1.0.0
+             */
+            performance_model_version: string;
+            /**
+             * Render Profile
+             * @default studio-tight-v1
+             */
+            render_profile: string;
+            /**
+             * Preference Guided
+             * @default false
+             */
+            preference_guided: boolean;
+            /**
+             * Preference Guidance Strength
+             * @default 0
+             */
+            preference_guidance_strength: number;
+            /** Preference Guided Features */
+            preference_guided_features?: string[];
         };
         /** PreferenceRange */
         PreferenceRange: {
@@ -2149,6 +2717,12 @@ export interface components {
             uncertainty: number;
             /** Observations */
             observations: number;
+            /**
+             * Evidence
+             * @description Evidence that selected candidates were closer to this range than rejected ones
+             * @default 0
+             */
+            evidence?: number;
         };
         /** PreferenceRequest */
         PreferenceRequest: {
@@ -2158,9 +2732,13 @@ export interface components {
              * Selected
              * @enum {string}
              */
-            selected: "A" | "B";
+            selected: "A" | "B" | "tie";
             /** Display Order */
             display_order?: string[];
+            /** Comparison Id */
+            comparison_id?: string;
+            /** Decision Time Ms */
+            decision_time_ms?: number | null;
         };
         /** PresetsResponse */
         PresetsResponse: {
@@ -2172,6 +2750,39 @@ export interface components {
             user: {
                 [key: string]: components["schemas"]["GrooveIntent"];
             };
+        };
+        /** QualityAuditReport */
+        QualityAuditReport: {
+            /**
+             * Audit Version
+             * @default engine-quality-v1
+             */
+            audit_version: string;
+            /** Engine Version */
+            engine_version: string;
+            /** Generated At */
+            generated_at: string;
+            /** Runtime */
+            runtime: string;
+            /** Control Seed Count */
+            control_seed_count: number;
+            /** Controls */
+            controls: components["schemas"]["ControlResponseAudit"][];
+            diversity: components["schemas"]["DiversityAudit"];
+            determinism: components["schemas"]["DeterminismAudit"];
+            latency: components["schemas"]["LatencyAudit"];
+            /** Passed */
+            passed: boolean;
+            /**
+             * Perceptual Quality Claim
+             * @default false
+             */
+            perceptual_quality_claim: boolean;
+            /**
+             * Caveat
+             * @default Technical regression audit only. Passing does not establish that listeners prefer the output.
+             */
+            caveat: string;
         };
         /** RegisterLimits */
         RegisterLimits: {
@@ -2200,6 +2811,40 @@ export interface components {
              * @default 12
              */
             max_single_leap: number;
+        };
+        /** RenderedAudioAnalysis */
+        RenderedAudioAnalysis: {
+            /**
+             * Scope
+             * @default groove
+             */
+            scope: string;
+            /** Profile Id */
+            profile_id: string;
+            /** Profile Version */
+            profile_version: string;
+            /** Sample Rate */
+            sample_rate: number;
+            /** Analyzed Bars */
+            analyzed_bars: number[];
+            /** Rendered Events */
+            rendered_events: number;
+            /** Low End Collision */
+            low_end_collision: number;
+            /** Low End Collision Applicable */
+            low_end_collision_applicable: boolean;
+            /** Transient Masking */
+            transient_masking: number;
+            /** Onset Clarity */
+            onset_clarity: number;
+            /** Headroom */
+            headroom: number;
+            /** Render Quality */
+            render_quality: number;
+            /** Confidence */
+            confidence: number;
+            /** Caveat */
+            caveat: string;
         };
         /** RhythmBassInteractionDNA */
         RhythmBassInteractionDNA: {
@@ -2263,6 +2908,26 @@ export interface components {
          * @enum {string}
          */
         StructuralRole: "expected_omission" | "intentional_gap" | "kick_exposure" | "pre_resolution_gap" | "phrase_break" | "recovery_target";
+        /** TapAnalysis */
+        TapAnalysis: {
+            /** Bpm */
+            bpm: number;
+            /** Timing Stability */
+            timing_stability: number;
+            /** Alternating Feel */
+            alternating_feel: number;
+            /** Confidence */
+            confidence: number;
+            /** Accepted Taps */
+            accepted_taps: number;
+            suggested_intent: components["schemas"]["GrooveIntent"];
+        };
+        /** TapAnalyzeRequest */
+        TapAnalyzeRequest: {
+            /** Timestamps Ms */
+            timestamps_ms: number[];
+            current_intent?: components["schemas"]["GrooveIntent"];
+        };
         /**
          * TechniqueType
          * @enum {string}
@@ -2438,7 +3103,9 @@ export interface operations {
     };
     preferences_api_v1_preferences_get: {
         parameters: {
-            query?: never;
+            query?: {
+                style?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -2451,9 +3118,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["GroovePreferenceSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -2477,9 +3151,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["GroovePreferenceSummary"];
                 };
             };
             /** @description Validation Error */
@@ -2489,6 +3161,112 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_blind_evaluation_api_v1_evaluation_sessions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BlindSessionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BlindSession"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submit_blind_evaluation_api_v1_evaluation_responses_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BlindResponseRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BlindResponseResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    blind_evaluation_summary_api_v1_evaluation_summary_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationSummary"];
+                };
+            };
+        };
+    };
+    quality_audit_api_v1_quality_audit_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QualityAuditReport"];
                 };
             };
         };
@@ -2535,6 +3313,105 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    tap_reference_api_v1_reference_taps_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TapAnalyzeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TapAnalysis"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    midi_reference_api_v1_reference_midi_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MidiReferenceRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MidiReferenceAnalysis"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    language_transform_api_v1_intent_transform_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IntentTransformRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntentTransformResponse"];
                 };
             };
             /** @description Validation Error */
@@ -2918,6 +3795,37 @@ export interface operations {
             };
         };
     };
+    generation_record_pattern_api_v1_bass_history_generation_records__generation_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                generation_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BassPattern-Output"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     generation_pattern_api_v1_bass_history_generations__pattern_id__get: {
         parameters: {
             query?: never;
@@ -3180,7 +4088,9 @@ export interface operations {
     };
     preferences_api_v1_bass_preferences_get: {
         parameters: {
-            query?: never;
+            query?: {
+                preset?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -3194,6 +4104,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BassPreferenceSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

@@ -53,3 +53,4 @@ def test_engine_capabilities_advertise_a_compatible_joint_contract() -> None:
     assert interaction["modes"] == [mode.value for mode in IntegrationMode]
     assert interaction["shared_complexity_budget"] is True
     assert interaction["lock_preservation"] is True
+    assert interaction["reference_render_analysis"] is True

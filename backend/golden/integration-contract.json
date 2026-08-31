@@ -38,6 +38,7 @@
     "joint_fitness",
     "change_cost",
     "complexity_fit",
+    "rendered_audio",
     "changes"
   ]
 }

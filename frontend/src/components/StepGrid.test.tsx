@@ -30,4 +30,20 @@ describe('StepGrid', () => {
     render(<StepGrid pattern={fiveEight} selectedBars={new Set()} selectedInstrument={null} onToggle={vi.fn()} onSelectEvent={vi.fn()} onSelectBar={vi.fn()} onSelectInstrument={vi.fn()} onLockInstrument={vi.fn()}/>)
     expect(screen.getAllByRole('button', { name: /step/ })).toHaveLength(60)
   })
+
+  it('edits an eighth-note triplet grid at exact 320 tick positions', () => {
+    const triplet = { ...pattern, meter: { ...pattern.meter, subdivisions_per_quarter: 3 } }
+    const onToggle = vi.fn()
+    render(<StepGrid pattern={triplet} selectedBars={new Set()} selectedInstrument={null} onToggle={onToggle} onSelectEvent={vi.fn()} onSelectBar={vi.fn()} onSelectInstrument={vi.fn()} onLockInstrument={vi.fn()}/>)
+    expect(screen.getAllByRole('button', { name: /step/ })).toHaveLength(72)
+    fireEvent.click(screen.getByLabelText('kick step 2'))
+    expect(onToggle).toHaveBeenCalledWith('kick', 320)
+    expect(screen.getByText(/8分3連/)).toBeTruthy()
+  })
+
+  it('renders a complete thirty-second-note grid', () => {
+    const thirtySecond = { ...pattern, meter: { ...pattern.meter, subdivisions_per_quarter: 8 } }
+    render(<StepGrid pattern={thirtySecond} selectedBars={new Set()} selectedInstrument={null} onToggle={vi.fn()} onSelectEvent={vi.fn()} onSelectBar={vi.fn()} onSelectInstrument={vi.fn()} onLockInstrument={vi.fn()}/>)
+    expect(screen.getAllByRole('button', { name: /step/ })).toHaveLength(192)
+  })
 })

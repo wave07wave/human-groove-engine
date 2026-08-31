@@ -4,13 +4,20 @@ from statistics import mean
 
 import pytest
 
-from app.bass.generation import generate_bass_candidates, generate_bass_pattern
+from app.bass.generation import (
+    generate_bass_candidate_pool,
+    generate_bass_candidates,
+    generate_bass_pattern,
+    preference_guided_bass_request,
+)
 from app.bass.models import (
     BassGenerateRequest,
     BassIntent,
+    BassPreferenceSummary,
     GrooveContext,
     InputMode,
     KickEvent,
+    PreferenceRange,
     ScaleMode,
     TempoMap,
 )
@@ -21,11 +28,39 @@ def generated(**changes) -> object:
     return generate_bass_pattern(BassGenerateRequest(**changes), candidate=0)
 
 
+def strong_bass_preference(
+    feature: str = "density", mean_value: float = 0.65
+) -> BassPreferenceSummary:
+    return BassPreferenceSummary(
+        comparisons=25,
+        decisive_comparisons=25,
+        effective_comparisons=25,
+        learning_confidence=1,
+        personal_weight=0.8,
+        feature_weights={feature: 1},
+        preferred_ranges={
+            feature: PreferenceRange(
+                mean=mean_value,
+                low=max(0, mean_value - 0.1),
+                high=min(1, mean_value + 0.1),
+                uncertainty=0,
+                observations=25,
+                evidence=1,
+            )
+        },
+    )
+
+
 def test_generation_is_exactly_deterministic() -> None:
     request = BassGenerateRequest(harmony="Dm7 | G7 | Cmaj7 | A7", bars=8, seed=9081)
     left = generate_bass_pattern(request, candidate=2)
     right = generate_bass_pattern(request, candidate=2)
     assert left.model_dump_json() == right.model_dump_json()
+
+
+def test_generated_pattern_records_its_preference_preset() -> None:
+    pattern = generated(preset="Walking", seed=9082)
+    assert pattern.metadata.preset == "Walking"
 
 
 @pytest.mark.parametrize("input_mode", list(InputMode))
@@ -42,6 +77,19 @@ def test_meter_generation_invariants(meter_name: str) -> None:
         0 <= event.grid_tick < pattern.bars * pattern.meter.bar_ticks for event in pattern.events
     )
     assert all(event.duration_tick > 0 for event in pattern.events)
+
+
+@pytest.mark.parametrize("subdivisions", [3, 6, 8])
+def test_bass_generation_follows_linked_groove_resolution(subdivisions: int) -> None:
+    grid_meter = MeterDefinition(
+        numerator=4,
+        denominator=4,
+        grouping=[2, 2],
+        subdivisions_per_quarter=subdivisions,
+    )
+    pattern = generated(bars=4, meter=grid_meter)
+    assert pattern.events
+    assert all(event.grid_tick % grid_meter.subdivision_tick == 0 for event in pattern.events)
 
 
 def test_root_strength_has_a_measured_effect() -> None:
@@ -153,3 +201,59 @@ def test_four_candidates_are_fitness_selected_and_diverse() -> None:
     assert len(candidates) == 4
     assert len({candidate.model_dump_json() for candidate in candidates}) == 4
     assert all(candidate.analysis is not None for candidate in candidates)
+
+
+def test_bass_preference_guidance_moves_only_the_private_search_intent() -> None:
+    request = BassGenerateRequest(bars=1)
+    request.intent.target.density = 0.1
+    guided, guidance = preference_guided_bass_request(
+        request, strong_bass_preference()
+    )
+
+    assert request.intent.target.density == 0.1
+    assert guided.intent.target.density == pytest.approx(0.2925)
+    assert guidance.features == ("density",)
+
+
+def test_chromatic_off_is_a_hard_constraint_for_preference_guidance() -> None:
+    intent = BassIntent(allow_chromatic_notes=False)
+    intent.target.chromaticism = 0
+    request = BassGenerateRequest(bars=1, intent=intent)
+    guided, guidance = preference_guided_bass_request(
+        request,
+        strong_bass_preference("chromatic_tolerance", 1),
+    )
+
+    assert guided.intent.target.chromaticism == 0
+    assert "chromatic_tolerance" not in guidance.features
+
+
+def test_bass_candidate_pool_mixes_normal_and_preference_guided_search() -> None:
+    request = BassGenerateRequest(bars=1, candidate_count=2, seed=1703)
+    request.intent.target.density = 0.1
+    pool = generate_bass_candidate_pool(request, strong_bass_preference())
+
+    assert len(pool) == 4
+    assert sum(item.metadata.preference_guided for item in pool) == 2
+    assert all(item.intent == request.intent for item in pool)
+    guided = [item for item in pool if item.metadata.preference_guided]
+    normal = [item for item in pool if not item.metadata.preference_guided]
+    assert all(item.metadata.preference_guided_features == ["density"] for item in guided)
+    assert all(item.metadata.preference_guidance_strength == pytest.approx(0.35) for item in guided)
+    assert all(item.metadata.preference_guidance_strength == 0 for item in normal)
+
+
+def test_bass_preference_guided_candidate_pool_is_deterministic() -> None:
+    request = BassGenerateRequest(bars=1, candidate_count=2, seed=1704)
+    request.intent.target.human_feel = 0.1
+    preference = strong_bass_preference("timing", 0.7)
+
+    left = generate_bass_candidate_pool(request, preference)
+    right = generate_bass_candidate_pool(request, preference)
+    assert [item.model_dump_json() for item in left] == [
+        item.model_dump_json() for item in right
+    ]
+    guided = next(item for item in left if item.metadata.preference_guided)
+    assert all(
+        event.decision_trace.factors["human_feel"] == 0.1 for event in guided.events
+    )

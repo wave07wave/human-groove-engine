@@ -9,7 +9,7 @@ from .models import GrooveContext, KickEvent, TempoMap, TempoSegment
 
 def groove_context_from_pattern(pattern: GroovePattern) -> GrooveContext:
     """Adapt a public Groove pattern to the stable Bass DTO boundary."""
-    step = 240
+    step = pattern.meter.subdivision_tick
     end = pattern.bars * pattern.meter.bar_ticks
     tension = [min(1.0, 0.22 + 0.58 * ((bar % 4) / 3)) for bar in range(pattern.bars)]
     return GrooveContext(

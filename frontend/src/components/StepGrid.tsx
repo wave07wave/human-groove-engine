@@ -15,10 +15,11 @@ interface Props {
 export function StepGrid(props: Props) {
   const { pattern } = props
   const barTicks = pattern.meter.numerator * 960 * 4 / pattern.meter.denominator
-  const stepTick = 240; const steps = pattern.bars * barTicks / stepTick
+  const stepTick = 960 / pattern.meter.subdivisions_per_quarter; const steps = pattern.bars * barTicks / stepTick
+  const resolutionLabel: Record<number,string> = { 2:'8分',3:'8分3連',4:'16分',6:'16分3連',8:'32分' }
   const eventAt = (instrument: Instrument, tick: number) => pattern.events.find(event => event.instrument === instrument && event.grid_tick === tick)
   return <section className="sequencer panel">
-    <div className="grid-toolbar"><div><p className="eyebrow">PATTERN</p><h2>{pattern.name}</h2></div><div className="legend"><span className="anchor">● Anchor</span><span className="ghost">● Ghost</span><span className="violation">● Violation</span><span className="recovery">● Recovery</span></div></div>
+    <div className="grid-toolbar"><div><p className="eyebrow">PATTERN · {resolutionLabel[pattern.meter.subdivisions_per_quarter]??`${pattern.meter.subdivisions_per_quarter}分割`}</p><h2>{pattern.name}</h2></div><div className="legend"><span className="anchor">● Anchor</span><span className="ghost">● Ghost</span><span className="violation">● Violation</span><span className="recovery">● Recovery</span></div></div>
     <div className="grid-scroll">
       <div className="bar-row" style={{ gridTemplateColumns: `130px repeat(${steps}, 30px)` }}><span />
         {Array.from({ length: steps }, (_, step) => {

@@ -6,14 +6,19 @@ from enum import StrEnum
 from pydantic import BaseModel, Field, model_validator
 
 from app.analysis.listener import analyze_pattern
+from app.audio import analyze_reference_render
 from app.config import PPQ
 from app.engine.generator import generate_pattern
+from app.models.analysis import RenderedAudioAnalysis
 from app.models.event import InstrumentID
 from app.models.pattern import GroovePattern
 
 from .analysis import analyze_bass_pattern, clamp
 from .explain import attach_decision_traces
-from .generation import generate_bass_candidates, generate_bass_pattern
+from .generation import (
+    generate_bass_candidates,
+    generate_preference_search_bass_pattern,
+)
 from .integration import groove_context_from_pattern
 from .models import (
     BassGenerateRequest,
@@ -37,6 +42,7 @@ class JointGenerateRequest(BaseModel):
     shared_complexity_budget: float = Field(0.55, ge=0, le=1)
     bass_complexity_share: float = Field(0.60, ge=0, le=1)
     candidate_count: int = Field(4, ge=1, le=4)
+    reference_render_analysis: bool = False
 
     @model_validator(mode="after")
     def matching_structure(self) -> "JointGenerateRequest":
@@ -63,6 +69,7 @@ class JointGenerationResult(BaseModel):
     joint_fitness: float
     change_cost: float
     complexity_fit: float
+    rendered_audio: RenderedAudioAnalysis | None = None
     changes: list[JointChange] = Field(default_factory=list)
 
 
@@ -351,6 +358,11 @@ def _co_created_groove(
         seed=source.metadata.master_seed,
         candidate=200 + candidate,
         name=source.name,
+        style=source.metadata.style,
+        performance_mode=(
+            "rule" if source.metadata.performance_model == "rule-pocket-v1" else "auto"
+        ),
+        render_profile=source.metadata.render_profile,
     )
     protected = [
         event
@@ -372,19 +384,62 @@ def _co_created_groove(
         and event.grid_tick // source.meter.bar_ticks not in protected_kick_regions
         and event.grid_tick // source.meter.bar_ticks not in source.bar_locks
     ]
-    reduced_kicks = []
-    for bar, target in enumerate(kick_targets):
-        bar_kicks = [
-            event for event in new_kicks if event.grid_tick // source.meter.bar_ticks == bar
+    available_by_bar = {
+        bar: [
+            event
+            for event in new_kicks
+            if event.grid_tick // source.meter.bar_ticks == bar
         ]
+        for bar in range(len(kick_targets))
+    }
+    selected_by_bar = {}
+
+    def kick_rank(event):
+        return (event.primary_role.value == "anchor", event.accent)
+
+    for bar, target in enumerate(kick_targets):
+        bar_kicks = available_by_bar[bar]
         wanted = max(1, round(len(bar_kicks) * (0.60 + 0.68 * target)))
-        reduced_kicks.extend(
-            sorted(
-                bar_kicks,
-                key=lambda event: (event.primary_role.value == "anchor", event.accent),
-                reverse=True,
-            )[:wanted]
+        selected_by_bar[bar] = sorted(bar_kicks, key=kick_rank, reverse=True)[:wanted]
+
+    # The raw generator may happen to create a busier recovery bar than peak bar.
+    # Preserve locks first, then add available peak material before trimming only
+    # the lowest-priority generated recovery hits.  This makes the shared
+    # establish → develop → peak → recover contour observable, not aspirational.
+    protected_kick_counts = {
+        bar: sum(
+            event.instrument == InstrumentID.KICK
+            and event.grid_tick // source.meter.bar_ticks == bar
+            for event in protected
         )
+        for bar in range(len(kick_targets))
+    }
+    for phrase_start in range(0, len(kick_targets), 4):
+        peak_bar, recovery_bar = phrase_start + 2, phrase_start + 3
+        if recovery_bar >= len(kick_targets):
+            continue
+        peak_count = protected_kick_counts[peak_bar] + len(selected_by_bar[peak_bar])
+        recovery_count = protected_kick_counts[recovery_bar] + len(
+            selected_by_bar[recovery_bar]
+        )
+        selected_peak_ids = {event.event_id for event in selected_by_bar[peak_bar]}
+        additions = [
+            event
+            for event in sorted(available_by_bar[peak_bar], key=kick_rank, reverse=True)
+            if event.event_id not in selected_peak_ids
+        ]
+        needed = max(0, recovery_count - peak_count + 1)
+        selected_by_bar[peak_bar].extend(additions[:needed])
+        peak_count += min(needed, len(additions))
+        excess = max(0, recovery_count - peak_count + 1)
+        if excess:
+            selected_by_bar[recovery_bar] = sorted(
+                selected_by_bar[recovery_bar], key=kick_rank, reverse=True
+            )[: max(0, len(selected_by_bar[recovery_bar]) - excess)]
+
+    reduced_kicks = [
+        event for bar in range(len(kick_targets)) for event in selected_by_bar[bar]
+    ]
     result = deepcopy(source)
     result.events = sorted(
         protected + reduced_kicks,
@@ -428,7 +483,12 @@ def _co_create(
         )
         aligned = _aligned_request(request, groove)
         bass = _apply_phrase_complexity_to_bass(
-            generate_bass_pattern(aligned, candidate=candidate), bass_targets
+            generate_preference_search_bass_pattern(
+                aligned,
+                candidate=candidate,
+                preference=preference,
+            ),
+            bass_targets,
         )
         pool.append(_make_result(request, groove, bass, changes, cost, preference))
     pool.sort(key=lambda item: item.joint_fitness, reverse=True)
@@ -444,4 +504,15 @@ def generate_joint_candidates(
         candidates = _negotiate(request, preference)
     else:
         candidates = _co_create(request, preference)
+    if request.reference_render_analysis:
+        for candidate in candidates:
+            rendered = analyze_reference_render(
+                candidate.groove_pattern, candidate.bass_pattern
+            )
+            candidate.rendered_audio = rendered
+            if rendered is not None:
+                candidate.joint_fitness = (
+                    0.92 * candidate.joint_fitness + 0.08 * rendered.render_quality
+                )
+        candidates.sort(key=lambda item: item.joint_fitness, reverse=True)
     return JointGenerateResponse(mode=request.mode, candidates=candidates)

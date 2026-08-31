@@ -26,6 +26,11 @@ def regenerate_selected(
         seed=pattern.metadata.master_seed + 1,
         candidate=0,
         name=pattern.name,
+        style=pattern.metadata.style,
+        performance_mode=(
+            "rule" if pattern.metadata.performance_model == "rule-pocket-v1" else "auto"
+        ),
+        render_profile=pattern.metadata.render_profile,
     )
     result = deepcopy(pattern)
     kept = [
@@ -45,6 +50,14 @@ def regenerate_selected(
         kept + replacements, key=lambda e: (e.grid_tick, e.instrument.value, e.event_id)
     )
     result.metadata.master_seed += 1
+    if (
+        fresh.metadata.performance_model != pattern.metadata.performance_model
+        and not pattern.metadata.performance_model.startswith("mixed:")
+    ):
+        result.metadata.performance_model = (
+            f"mixed:{pattern.metadata.performance_model}+{fresh.metadata.performance_model}"
+        )
+        result.metadata.performance_model_version = fresh.metadata.performance_model_version
     result.pattern_id = f"{pattern.pattern_id}-m{result.metadata.master_seed}"
     result.analysis = None
     return result

@@ -5,13 +5,14 @@ from statistics import mean
 import pytest
 from fastapi.testclient import TestClient
 
+from app.bass import interaction as interaction_module
 from app.bass.interaction import (
     IntegrationMode,
     JointGenerateRequest,
     _phrase_complexity_targets,
     generate_joint_candidates,
 )
-from app.bass.models import BassGenerateRequest
+from app.bass.models import BassGenerateRequest, BassPreferenceSummary, PreferenceRange
 from app.engine.generator import generate_pattern
 from app.main import app
 from app.models.event import InstrumentID
@@ -41,6 +42,47 @@ def request_for(mode: IntegrationMode, count: int = 2) -> JointGenerateRequest:
         mode=mode,
         candidate_count=count,
     )
+
+
+def strong_preference() -> BassPreferenceSummary:
+    return BassPreferenceSummary(
+        comparisons=20,
+        decisive_comparisons=20,
+        effective_comparisons=20,
+        learning_confidence=1,
+        personal_weight=0.8,
+        feature_weights={"density": 1},
+        preferred_ranges={
+            "density": PreferenceRange(
+                mean=0.7,
+                low=0.6,
+                high=0.8,
+                uncertainty=0,
+                observations=20,
+                evidence=1,
+            )
+        },
+    )
+
+
+def test_co_create_passes_preference_to_every_bass_search_candidate(monkeypatch) -> None:
+    calls: list[tuple[int, BassPreferenceSummary | None]] = []
+    original = interaction_module.generate_preference_search_bass_pattern
+
+    def tracked(request, *, candidate, preference):
+        calls.append((candidate, preference))
+        return original(request, candidate=candidate, preference=preference)
+
+    monkeypatch.setattr(
+        interaction_module,
+        "generate_preference_search_bass_pattern",
+        tracked,
+    )
+    preference = strong_preference()
+    generate_joint_candidates(request_for(IntegrationMode.CO_CREATE, count=1), preference)
+
+    assert [candidate for candidate, _ in calls] == list(range(8))
+    assert all(received is preference for _, received in calls)
 
 
 def test_follow_keeps_groove_events_exactly_fixed() -> None:
@@ -270,6 +312,17 @@ def test_joint_api_contract() -> None:
     payload = response.json()
     assert payload["mode"] == "negotiate"
     assert len(payload["candidates"]) == 1
+
+
+def test_joint_reference_render_uses_the_generated_bass_lane() -> None:
+    request = request_for(IntegrationMode.FOLLOW, count=1)
+    request.reference_render_analysis = True
+    response = generate_joint_candidates(request)
+    rendered = response.candidates[0].rendered_audio
+    assert rendered is not None
+    assert rendered.scope == "joint"
+    assert rendered.low_end_collision_applicable
+    assert rendered.rendered_events > 0
 
 
 def test_joint_api_rejects_mismatched_structure() -> None:

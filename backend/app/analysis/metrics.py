@@ -21,7 +21,7 @@ def _bar_signatures(pattern: GroovePattern) -> list[set[tuple[str, int]]]:
         start = bar * pattern.meter.bar_ticks
         result.append(
             {
-                (e.instrument.value, (e.grid_tick - start) // (PPQ // 4))
+                (e.instrument.value, (e.grid_tick - start) // pattern.meter.subdivision_tick)
                 for e in pattern.events
                 if start <= e.grid_tick < start + pattern.meter.bar_ticks
             }
@@ -42,19 +42,46 @@ def measure_syncopation(pattern: GroovePattern) -> float:
         return 0.0
     score = 0.0
     possible = 0.0
-    for event in pattern.events:
-        gravity = metric_gravity(pattern.meter, event.grid_tick)
-        if event.primary_role in (EventRole.VIOLATION, EventRole.ANTICIPATION):
-            score += 0.8 + event.accent * 0.5
-        elif gravity < 0.5:
-            score += (0.5 - gravity) * event.accent
-        possible += 1.1
-    strong = strong_positions(pattern.meter)
+    step_tick = pattern.meter.subdivision_tick
     for bar in range(pattern.bars):
-        ticks = {e.grid_tick - bar * pattern.meter.bar_ticks for e in pattern.events}
-        score += sum(0.35 for position in strong[1:] if position not in ticks)
-        possible += max(0.35, len(strong) * 0.35)
-    return clamp(score / max(1, possible) * 2.0)
+        bar_start = bar * pattern.meter.bar_ticks
+        bar_events = [
+            event
+            for event in pattern.events
+            if bar_start <= event.grid_tick < bar_start + pattern.meter.bar_ticks
+        ]
+        positions_by_instrument = {
+            instrument: {
+                event.grid_tick - bar_start
+                for event in bar_events
+                if event.instrument == instrument
+            }
+            for instrument in InstrumentID
+        }
+        for event in bar_events:
+            local = event.grid_tick - bar_start
+            gravity = metric_gravity(pattern.meter, local)
+            next_stronger = 0.0
+            for distance in range(1, 5):
+                future = local + distance * step_tick
+                if future >= pattern.meter.bar_ticks:
+                    break
+                future_gravity = metric_gravity(pattern.meter, future)
+                if (
+                    future_gravity > gravity
+                    and future not in positions_by_instrument[event.instrument]
+                ):
+                    next_stronger = max(next_stronger, future_gravity - gravity)
+            role_bonus = (
+                0.24
+                if event.primary_role in (EventRole.VIOLATION, EventRole.ANTICIPATION)
+                else 0.0
+            )
+            score += next_stronger * (0.55 + 0.45 * event.accent) + role_bonus
+            possible += 1.0
+    # Density and hierarchical displacement are deliberately separate: this value
+    # rewards accented weak-to-strong expectation violations, not event count alone.
+    return clamp(score / max(1, possible) * 3.2)
 
 
 def measure_repetition(pattern: GroovePattern) -> float:
@@ -62,8 +89,13 @@ def measure_repetition(pattern: GroovePattern) -> float:
     if len(signatures) < 2:
         return 1.0
     similarities = []
-    for left, right in zip(signatures, signatures[1:]):
-        similarities.append(len(left & right) / max(1, len(left | right)))
+    for index, current in enumerate(signatures[1:], start=1):
+        similarities.append(
+            max(
+                len(previous & current) / max(1, len(previous | current))
+                for previous in signatures[:index]
+            )
+        )
     return clamp(float(np.mean(similarities)))
 
 
@@ -95,6 +127,16 @@ def measure_swing(pattern: GroovePattern) -> float:
 def measure_microtiming(pattern: GroovePattern) -> float:
     offsets = [abs(e.micro_offset_us) for e in pattern.events]
     return clamp(float(np.mean(offsets)) / (MAX_MICROTIMING_US * 0.4)) if offsets else 0.0
+
+
+def measure_microtiming_irregularity(pattern: GroovePattern) -> float:
+    """Penalize isolated timing errors while allowing coherent instrument pockets."""
+    residual_spreads: list[float] = []
+    for instrument in InstrumentID:
+        offsets = [e.micro_offset_us for e in pattern.events if e.instrument == instrument]
+        if len(offsets) > 1:
+            residual_spreads.append(float(np.std(offsets)))
+    return clamp(float(np.mean(residual_spreads)) / 9_000) if residual_spreads else 0.0
 
 
 def measure_velocity_contrast(pattern: GroovePattern) -> float:
@@ -139,6 +181,37 @@ def measure_ghost_density(pattern: GroovePattern) -> float:
     )
 
 
+def measure_omission(pattern: GroovePattern) -> float:
+    expected = strong_positions(pattern.meter)[1:]
+    if not expected:
+        return 0.0
+    kicks = {event.grid_tick for event in pattern.events if event.instrument == InstrumentID.KICK}
+    opportunities = [
+        bar * pattern.meter.bar_ticks + local
+        for bar in range(pattern.bars)
+        for local in expected
+    ]
+    missing = sum(tick not in kicks for tick in opportunities)
+    return clamp(missing / len(opportunities))
+
+
+def measure_phrase_development(pattern: GroovePattern) -> float:
+    if pattern.bars < 2:
+        return 0.0
+    energies = []
+    for bar in range(pattern.bars):
+        start = bar * pattern.meter.bar_ticks
+        stop = start + pattern.meter.bar_ticks
+        events = [event for event in pattern.events if start <= event.grid_tick < stop]
+        energies.append(sum((event.velocity / 127) ** 1.25 for event in events))
+    edge_energy = (energies[0] + energies[-1]) / 2
+    middle = energies[1:-1] or energies
+    middle_energy = float(np.mean(middle))
+    arch = max(0.0, (middle_energy - edge_energy) / max(1.0, middle_energy + edge_energy))
+    contour = float(np.std(energies)) / max(1.0, float(np.mean(energies)))
+    return clamp(3.2 * arch + 0.8 * contour)
+
+
 def measure_dna(pattern: GroovePattern) -> GrooveDNA:
     repetition = measure_repetition(pattern)
     variation = measure_variation(pattern)
@@ -156,9 +229,7 @@ def measure_dna(pattern: GroovePattern) -> GrooveDNA:
     anticipation = sum(e.primary_role == EventRole.ANTICIPATION for e in pattern.events) / max(
         1, len(pattern.events)
     )
-    omission = sum(e.primary_role == EventRole.OMISSION_PROXY for e in pattern.events) / max(
-        1, pattern.bars
-    )
+    omission = measure_omission(pattern)
     return GrooveDNA(
         pulse_stability=pulse,
         beat_salience=beat_salience,
@@ -180,5 +251,5 @@ def measure_dna(pattern: GroovePattern) -> GrooveDNA:
         recovery_strength=recovery,
         motor_affordance=clamp(motor),
         hypnotic=clamp(repetition * (1 - surprise * 0.5)),
-        phrase_development=clamp(0.55 * variation + 0.45 * density),
+        phrase_development=measure_phrase_development(pattern),
     )

@@ -1,0 +1,14 @@
+{
+  "profile_id": "studio-tight-v1",
+  "version": "1.0.0",
+  "display_name": "Studio Tight",
+  "sample_rate": 8000,
+  "instruments": {
+    "kick": {"oscillator":"sine","frequency_hz":58,"attack_ms":1.5,"decay_ms":180,"gain":0.78,"transient_mix":0.32,"noise_mix":0.03,"band":"low","low_end_weight":1.0},
+    "snare": {"oscillator":"noise","frequency_hz":190,"attack_ms":0.8,"decay_ms":115,"gain":0.48,"transient_mix":0.28,"noise_mix":0.70,"band":"mid","low_end_weight":0.05},
+    "closed_hat": {"oscillator":"noise","frequency_hz":3100,"attack_ms":0.4,"decay_ms":38,"gain":0.18,"transient_mix":0.16,"noise_mix":0.86,"band":"high","low_end_weight":0.0},
+    "open_hat": {"oscillator":"noise","frequency_hz":2800,"attack_ms":0.5,"decay_ms":220,"gain":0.20,"transient_mix":0.12,"noise_mix":0.84,"band":"high","low_end_weight":0.0},
+    "percussion": {"oscillator":"triangle","frequency_hz":230,"attack_ms":1.2,"decay_ms":130,"gain":0.34,"transient_mix":0.24,"noise_mix":0.10,"band":"mid","low_end_weight":0.18},
+    "bass": {"oscillator":"triangle","frequency_hz":65.4,"attack_ms":5.0,"decay_ms":360,"gain":0.52,"transient_mix":0.04,"noise_mix":0.0,"band":"low","low_end_weight":0.92}
+  }
+}

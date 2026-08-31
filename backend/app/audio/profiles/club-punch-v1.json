@@ -1,0 +1,14 @@
+{
+  "profile_id": "club-punch-v1",
+  "version": "1.0.0",
+  "display_name": "Club Punch",
+  "sample_rate": 8000,
+  "instruments": {
+    "kick": {"oscillator":"sine","frequency_hz":49,"attack_ms":1.1,"decay_ms":340,"gain":0.88,"transient_mix":0.30,"noise_mix":0.02,"band":"low","low_end_weight":1.0},
+    "snare": {"oscillator":"noise","frequency_hz":205,"attack_ms":0.7,"decay_ms":105,"gain":0.52,"transient_mix":0.34,"noise_mix":0.73,"band":"mid","low_end_weight":0.04},
+    "closed_hat": {"oscillator":"noise","frequency_hz":3400,"attack_ms":0.35,"decay_ms":32,"gain":0.20,"transient_mix":0.19,"noise_mix":0.88,"band":"high","low_end_weight":0.0},
+    "open_hat": {"oscillator":"noise","frequency_hz":3000,"attack_ms":0.45,"decay_ms":180,"gain":0.20,"transient_mix":0.15,"noise_mix":0.86,"band":"high","low_end_weight":0.0},
+    "percussion": {"oscillator":"triangle","frequency_hz":250,"attack_ms":0.8,"decay_ms":105,"gain":0.33,"transient_mix":0.28,"noise_mix":0.08,"band":"mid","low_end_weight":0.15},
+    "bass": {"oscillator":"sine","frequency_hz":55,"attack_ms":4.0,"decay_ms":420,"gain":0.55,"transient_mix":0.04,"noise_mix":0.0,"band":"low","low_end_weight":1.0}
+  }
+}

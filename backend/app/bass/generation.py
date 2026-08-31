@@ -7,6 +7,7 @@ import numpy as np
 
 from app.config import MAX_MICROTIMING_US, PPQ
 from app.engine.pulse import metric_gravity, strong_positions
+from app.preference_guidance import PreferenceGuidance, guided_feature_values
 from app.random.seeds import HierarchicalRNG
 
 from .analysis import analyze_bass_pattern
@@ -43,6 +44,17 @@ from .models import (
 )
 from .preference import blended_candidate_score
 
+BASS_PREFERENCE_TARGETS = {
+    "syncopation": "syncopation",
+    "density": "density",
+    "silence": "silence",
+    "root_usage": "root_strength",
+    "chromatic_tolerance": "chromaticism",
+    "pitch_motion": "melodic_motion",
+    "timing": "human_feel",
+    "duration": "duration_contrast",
+}
+
 
 @dataclass
 class SkeletonEvent:
@@ -66,8 +78,9 @@ def _clamp(value: float) -> float:
 def _gravity(request: BassGenerateRequest, tick: int) -> float:
     context = request.groove_context
     if context and context.metric_gravity:
-        slot = tick // (PPQ // 4)
-        if slot < len(context.metric_gravity):
+        step = request.meter.subdivision_tick
+        slot = tick // step
+        if tick % step == 0 and slot < len(context.metric_gravity):
             return _clamp(context.metric_gravity[slot])
     return metric_gravity(request.meter, tick)
 
@@ -122,7 +135,7 @@ def _rhythm_skeleton(
     candidate: int,
 ) -> list[SkeletonEvent]:
     strong = set(strong_positions(request.meter))
-    step_tick = PPQ // 4
+    step_tick = request.meter.subdivision_tick
     slots_per_bar = max(1, request.meter.bar_ticks // step_tick)
     beat_units = request.meter.bar_ticks / PPQ
     target_count = max(1, round(beat_units * (0.65 + intent.target.density * 1.65)))
@@ -452,8 +465,9 @@ def _render_events(
         micro = int((pocket + rng.normal(0, 750)) * intent.target.human_feel)
         micro = max(-MAX_MICROTIMING_US, min(MAX_MICROTIMING_US, micro))
         structural = 0
-        local_slot = (item.tick % request.meter.bar_ticks) // (PPQ // 4)
-        if local_slot % 2 == 1:
+        local_tick = item.tick % request.meter.bar_ticks
+        is_triplet_grid = request.meter.subdivisions_per_quarter in (3, 6)
+        if not is_triplet_grid and local_tick % (PPQ // 2) == PPQ // 4:
             structural = int((PPQ // 4) * 0.12 * intent.target.human_feel)
         events.append(
             BassEvent(
@@ -526,6 +540,7 @@ def generate_bass_pattern(request: BassGenerateRequest, candidate: int = 0) -> B
         voice_policy=request.voice_policy,
         metadata=BassPatternMetadata(
             master_seed=request.seed,
+            preset=request.preset,
             candidate_index=candidate,
             resolved_intent_notes=resolution_notes,
         ),
@@ -559,11 +574,71 @@ def _candidate_distance(left: BassPattern, right: BassPattern) -> float:
     return 0.6 * feature_distance + 0.4 * rhythm_distance
 
 
-def generate_bass_candidates(
+def preference_guided_bass_request(
+    request: BassGenerateRequest, preference: BassPreferenceSummary | None
+) -> tuple[BassGenerateRequest, PreferenceGuidance]:
+    disabled = (
+        frozenset({"chromatic_tolerance"})
+        if not request.intent.allow_chromatic_notes
+        else frozenset()
+    )
+    guidance = guided_feature_values(
+        request.intent.target.model_dump(),
+        BASS_PREFERENCE_TARGETS,
+        preference,
+        disabled_features=disabled,
+    )
+    guided = request.model_copy(deep=True)
+    for target, value in guidance.values.items():
+        setattr(guided.intent.target, target, value)
+    return guided, guidance
+
+
+def generate_preference_search_bass_pattern(
+    request: BassGenerateRequest,
+    *,
+    candidate: int,
+    preference: BassPreferenceSummary | None,
+) -> BassPattern:
+    guided_request, guidance = preference_guided_bass_request(request, preference)
+    use_guidance = guidance.active and candidate % 2 == 1
+    pattern = generate_bass_pattern(
+        guided_request if use_guidance else request,
+        candidate=candidate,
+    )
+    if not use_guidance:
+        return pattern
+    pattern.intent = request.intent.model_copy(deep=True)
+    pattern.metadata.preference_guided = True
+    pattern.metadata.preference_guidance_strength = guidance.strength
+    pattern.metadata.preference_guided_features = list(guidance.features)
+    _, original_resolution_notes = resolve_intent(request.intent)
+    pattern.metadata.resolved_intent_notes = original_resolution_notes + [
+        "Preference-guided search adjusted " + ", ".join(guidance.features)
+    ]
+    attach_decision_traces(pattern)
+    pattern.analysis = analyze_bass_pattern(pattern)
+    return pattern
+
+
+def generate_bass_candidate_pool(
     request: BassGenerateRequest, preference: BassPreferenceSummary | None = None
 ) -> list[BassPattern]:
     pool_size = min(10, max(request.candidate_count * 2, request.candidate_count))
-    pool = [generate_bass_pattern(request, candidate=index) for index in range(pool_size)]
+    return [
+        generate_preference_search_bass_pattern(
+            request,
+            candidate=index,
+            preference=preference,
+        )
+        for index in range(pool_size)
+    ]
+
+
+def generate_bass_candidates(
+    request: BassGenerateRequest, preference: BassPreferenceSummary | None = None
+) -> list[BassPattern]:
+    pool = generate_bass_candidate_pool(request, preference)
     pool.sort(key=lambda item: blended_candidate_score(item, preference), reverse=True)
     selected = [pool.pop(0)]
     while pool and len(selected) < request.candidate_count:

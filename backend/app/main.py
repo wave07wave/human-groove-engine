@@ -8,10 +8,11 @@ from fastapi.responses import FileResponse
 from app.api.v1.interaction_routes import router as interaction_router
 from app.api.v1.routes import router
 from app.bass.api import router as bass_router
+from app.config import ENGINE_VERSION
 
 app = FastAPI(
     title="Human Groove Engine API",
-    version="0.1.0",
+    version=ENGINE_VERSION,
     description="Deterministic rhythm generation, measurement, mutation and MIDI export.",
 )
 cors_origins = [
