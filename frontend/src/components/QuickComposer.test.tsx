@@ -54,8 +54,19 @@ it('forwards a selected genre style and its preset intent', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'まとめて作成' }))
 
   await waitFor(() => expect(mocks.generate).toHaveBeenCalled())
-  expect(mocks.generate.mock.calls[0][0]).toMatchObject({
-    preset: 'House',
-    intent: houseIntent,
+  expect(mocks.generate.mock.calls[0][0].preset).toBe('House')
+  expect(mocks.generate.mock.calls[0][0].intent.target_dna.density).toBeCloseTo(.72)
+})
+
+it('lets the player choose a bolder generation width', async () => {
+  const onReady = vi.fn()
+  mocks.groovePresets.mockResolvedValue({
+    built_in: { Balanced: { target_dna: { variation: .35, surprise: .35 } } }, user: {},
   })
+  render(<QuickComposer groove={null} bass={null} onReady={onReady} onOpenDetails={vi.fn()} />)
+  fireEvent.change(await screen.findByLabelText('パターンの幅'), { target: { value: 'adventurous' } })
+  fireEvent.click(screen.getByRole('button', { name: 'まとめて作成' }))
+
+  await waitFor(() => expect(mocks.generate).toHaveBeenCalled())
+  expect(mocks.generate.mock.calls[0][0].intent.target_dna).toMatchObject({ variation: .63, surprise: .55 })
 })

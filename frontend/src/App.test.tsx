@@ -19,10 +19,11 @@ it('offers an easy workspace alongside the detailed editors', () => {
   fireEvent.click(screen.getByRole('button', { name: 'かんたん' }))
   expect(screen.getByText('少ない設定で、すぐに一曲の土台を。')).toBeTruthy()
   expect(screen.getByRole('button', { name: 'まとめて作成' })).toBeTruthy()
-  const drumSound = screen.getByLabelText('ドラムの音') as HTMLSelectElement
-  expect(drumSound.value).toBe('studio-tight-v1')
-  fireEvent.change(drumSound, { target: { value: 'warm-pocket-v1' } })
-  expect(drumSound.value).toBe('warm-pocket-v1')
+  const studio = screen.getByRole('radio', { name: 'Studio Tight · タイトで明瞭' })
+  const warm = screen.getByRole('radio', { name: 'Warm Pocket · 柔らかく太い' })
+  expect(studio.getAttribute('aria-checked')).toBe('true')
+  fireEvent.click(warm)
+  expect(warm.getAttribute('aria-checked')).toBe('true')
 })
 
 it('passes the generated Groove candidate into the Bass context link flow', async () => {

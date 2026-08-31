@@ -4,6 +4,25 @@ import type { BassGenerateRequest, BassPresetsResponse, BassPattern, GroovePatte
 import { METERS } from '../utils/meters'
 import { DRUM_SOUND_OPTIONS, type DrumSoundId } from '../audio/drumKitProfile'
 
+type PatternWidth = 'focused' | 'wide' | 'adventurous'
+
+const WIDTH_ADJUSTMENTS: Record<PatternWidth, Record<string, number>> = {
+  focused: { variation: -.14, surprise: -.12, syncopation: -.08, density: -.05, repetition: .08 },
+  wide: { variation: .16, surprise: .1, syncopation: .07, interlock: .08, density: .04, phrase_development: .12 },
+  adventurous: { variation: .28, surprise: .2, syncopation: .15, interlock: .14, density: .09, metric_ambiguity: .1, phrase_development: .2 },
+}
+
+function withPatternWidth<T extends { target_dna?: Record<string, unknown> }>(intent: T, width: PatternWidth): T {
+  const adjusted = structuredClone(intent)
+  const dna = adjusted.target_dna
+  if (!dna) return adjusted
+  for (const [key, delta] of Object.entries(WIDTH_ADJUSTMENTS[width])) {
+    const value = dna[key]
+    if (typeof value === 'number') dna[key] = Math.max(0, Math.min(1, value + delta))
+  }
+  return adjusted
+}
+
 type Props = {
   groove: GroovePattern | null
   bass: BassPattern | null
@@ -18,6 +37,7 @@ export function QuickComposer({ groove, bass, onReady, onOpenDetails }: Props) {
   const [bassRole, setBassRole] = useState('Supportive')
   const [bpm, setBpm] = useState(100)
   const [bars, setBars] = useState(4)
+  const [patternWidth, setPatternWidth] = useState<PatternWidth>('wide')
   const [renderProfile, setRenderProfile] = useState<DrumSoundId>('studio-tight-v1')
   const [seed, setSeed] = useState(42)
   const [busy, setBusy] = useState(false)
@@ -30,7 +50,8 @@ export function QuickComposer({ groove, bass, onReady, onOpenDetails }: Props) {
   }, [])
 
   const generateSong = async () => {
-    const grooveIntent = groovePresets?.built_in[style] ?? groovePresets?.built_in.Balanced
+    const baseGrooveIntent = groovePresets?.built_in[style] ?? groovePresets?.built_in.Balanced
+    const grooveIntent = baseGrooveIntent && withPatternWidth(baseGrooveIntent, patternWidth)
     const bassIntent = bassPresets?.built_in[bassRole] ?? bassPresets?.built_in.Supportive
     if (!grooveIntent || !bassIntent) return
     setBusy(true)
@@ -68,6 +89,7 @@ export function QuickComposer({ groove, bass, onReady, onOpenDetails }: Props) {
       <div className="quick-settings">
         <label>Grooveのスタイル<select value={style} onChange={event => setStyle(event.target.value)}>{Object.keys(groovePresets?.built_in ?? { Balanced: 1 }).map(name => <option key={name}>{name}</option>)}</select></label>
         <label>Bassの役割<select value={bassRole} onChange={event => setBassRole(event.target.value)}>{Object.keys(bassPresets?.built_in ?? { Supportive: 1 }).map(name => <option key={name}>{name}</option>)}</select></label>
+        <label>パターンの幅<select value={patternWidth} onChange={event => setPatternWidth(event.target.value as PatternWidth)}><option value="focused">まとまり</option><option value="wide">広め</option><option value="adventurous">大胆</option></select></label>
         <label>BPM<input type="number" min="30" max="300" value={bpm} onChange={event => setBpm(Number(event.target.value))} /></label>
         <label>長さ<select value={bars} onChange={event => setBars(Number(event.target.value))}>{[2, 4, 8, 16].map(value => <option key={value} value={value}>{value}小節</option>)}</select></label>
       </div>
