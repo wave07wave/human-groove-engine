@@ -88,10 +88,22 @@ def _event(
             velocity = round(
                 (1 - learned_blend) * velocity + learned_blend * learned.target_velocity
             )
+    if instrument == InstrumentID.CLOSED_HAT:
+        # The hat is the most continuous voice, so its accent contour needs to
+        # remain audible even when the learned performance layer is active.
+        velocity += round((accent - 0.48) * 26)
+        if role == EventRole.GHOST:
+            velocity -= 8
+    elif instrument == InstrumentID.OPEN_HAT:
+        velocity += round((accent - 0.5) * 18)
     velocity = max(1, min(127, velocity))
     duration_factor = 0.48 + dna.duration_contrast * float(rng.uniform(0.05, 1.1))
     if instrument == InstrumentID.BASS:
         duration_factor += 0.7
+    elif instrument == InstrumentID.CLOSED_HAT:
+        duration_factor = 0.23 + 0.22 * dna.duration_contrast
+    elif instrument == InstrumentID.OPEN_HAT:
+        duration_factor = 0.9 + 0.48 * dna.duration_contrast
     duration = max(60, int((PPQ // 4) * duration_factor))
     pitch = 36 if instrument == InstrumentID.BASS else DRUM_PITCHES.get(instrument.value)
     choke = "hihat" if instrument in (InstrumentID.CLOSED_HAT, InstrumentID.OPEN_HAT) else None
@@ -185,42 +197,149 @@ def generate_pattern(
                 accent = gravity
 
                 if instrument == InstrumentID.CLOSED_HAT:
-                    carrier = local % carrier_tick == 0
-                    carrier_chance = max(
-                        0.08,
-                        min(
-                            0.98,
-                            0.1
-                            + 0.25 * dna.pulse_stability
-                            + 0.24 * dna.motor_affordance
-                            + 0.25 * dna.density
-                            + 0.12 * dna.metric_ambiguity
-                            + dna.beat_salience * (0.52 * gravity - 0.12)
-                            + 0.03
-                            - 0.15 * gravity,
-                        ),
+                    # A hi-hat is not generated as an isolated metronome.  It
+                    # carries a slower spine, fills selected subdivisions, then
+                    # responds to the kick/snare conversation and phrase state.
+                    # Kick and snare have already been generated for this bar.
+                    kick_here = any(
+                        event.instrument == InstrumentID.KICK and event.grid_tick == tick
+                        for event in events
                     )
-                    on = carrier and (local == 0 or structural_draw() < carrier_chance)
-                    if not carrier:
-                        ornament_chance = max(0, dna.density - 0.52) * 0.35
-                        ornament_chance += (
-                            variation_scale * 0.12
-                            + max(0, tension - 0.5) * 0.08
-                            + dna.surprise * 0.12
-                            + dna.metric_ambiguity * 0.15
-                            + motor_energy * 0.28
-                        )
-                        on = structural_draw() < ornament_chance
-                    if not on and local == rhythm_figure.answer_tick:
-                        answer_chance = max(0, dna.syncopation - 0.2) * (
-                            0.2 + 0.38 * dna.motor_affordance + 0.18 * tension
-                        )
-                        on = structural_draw() < answer_chance
-                    if not on and local in style_rhythm.reinforced_hat_ticks:
-                        on = structural_draw() < style_rhythm.hat_probability
+                    snare_here = any(
+                        event.instrument == InstrumentID.SNARE and event.grid_tick == tick
+                        for event in events
+                    )
+                    previous_kick = any(
+                        event.instrument == InstrumentID.KICK
+                        and event.grid_tick == tick - step_tick
+                        for event in events
+                    )
+                    next_snare = any(
+                        event.instrument == InstrumentID.SNARE
+                        and event.grid_tick == tick + step_tick
+                        for event in events
+                    )
+                    spine_tick = PPQ // (3 if triplet_grid else 2)
+                    spine = local % spine_tick == 0
+                    subdivision = local % carrier_tick == 0
+                    phrase_end_window = slot >= steps - min(4, carrier_subdivisions)
+                    spine_chance = min(
+                        0.98,
+                        0.58
+                        + 0.23 * dna.pulse_stability
+                        + 0.18 * dna.motor_affordance
+                        + 0.12 * dna.density
+                        + 0.08 * dna.beat_salience,
+                    )
+                    on = spine and (local == 0 or structural_draw() < spine_chance)
                     if on:
                         role = EventRole.ANCHOR if local % PPQ == 0 else EventRole.CONFIRMATION
-                        accent = 0.36 + (0.0625 + 0.55 * dna.beat_salience) * gravity
+                        accent = 0.46 + 0.42 * gravity
+
+                    # Pushes after kick hits, pickups into the snare and the
+                    # shared phrase-answer position create interlocking motion.
+                    response_chance = (
+                        0.12
+                        + 0.38 * dna.interlock
+                        + 0.28 * dna.syncopation
+                        + 0.18 * dna.motor_affordance
+                    ) * (0.72 + 0.35 * tension)
+                    if (
+                        not on
+                        and previous_kick
+                        and gravity < 0.72
+                        and structural_draw() < response_chance
+                    ):
+                        on, role, accent = True, EventRole.CONFIRMATION, 0.42 + 0.26 * dna.interlock
+                    if (
+                        not on
+                        and next_snare
+                        and gravity < 0.72
+                        and structural_draw() < response_chance * 0.82
+                    ):
+                        on, role, accent = (
+                            True,
+                            EventRole.ANTICIPATION,
+                            0.38 + 0.28 * dna.anticipation,
+                        )
+                    if not on and local == rhythm_figure.answer_tick:
+                        answer_chance = max(0, dna.syncopation - 0.12) * (
+                            0.28 + 0.44 * dna.motor_affordance + 0.24 * tension
+                        )
+                        if structural_draw() < answer_chance:
+                            on, role, accent = (
+                                True,
+                                EventRole.CONFIRMATION,
+                                0.48 + 0.2 * dna.syncopation,
+                            )
+
+                    # A deliberate pickup before a tactus can replace the
+                    # following closed-hat stroke.  This creates actual
+                    # syncopation (weak attack → expected strong-space), not
+                    # merely more notes between the beats.
+                    pre_tactus = local % PPQ == PPQ - step_tick
+                    if not on and pre_tactus and local + step_tick < meter.bar_ticks:
+                        pickup_chance = (
+                            0.04
+                            + 0.52 * dna.syncopation
+                            + 0.16 * dna.anticipation
+                            + 0.12 * dna.interlock
+                        ) * (0.6 + 0.4 * tension)
+                        if structural_draw() < pickup_chance:
+                            on, role, accent = (
+                                True,
+                                EventRole.ANTICIPATION,
+                                0.42 + 0.3 * dna.syncopation,
+                            )
+
+                    # The phrase ending can briefly become more detailed, but
+                    # only on legal inner subdivisions and never on every bar.
+                    subdivision_chance = (
+                        max(0, dna.density - 0.34) * 0.34
+                        + variation_scale * 0.22
+                        + dna.surprise * 0.12
+                        + dna.metric_ambiguity * 0.11
+                    ) * (0.62 + 0.48 * tension)
+                    if (
+                        not on
+                        and subdivision
+                        and not kick_here
+                        and structural_draw() < subdivision_chance
+                    ):
+                        on, role, accent = True, EventRole.DECORATION, 0.26 + 0.2 * tension
+                    if not on and phrase_end_window and motif != "A" and gravity < 0.7:
+                        if structural_draw() < subdivision_chance * 0.9:
+                            on, role, accent = True, EventRole.TRANSITION, 0.34 + 0.22 * tension
+                    if not on and local in style_rhythm.reinforced_hat_ticks:
+                        on = structural_draw() < style_rhythm.hat_probability
+                        if on:
+                            role, accent = EventRole.CONFIRMATION, 0.44 + 0.28 * gravity
+
+                    # A small amount of space around some backbeats prevents a
+                    # continuous grid from masking the snare's answer.
+                    if on and snare_here and local != 0:
+                        breathing_room = (0.06 + 0.18 * dna.variation) * (1 - 0.5 * dna.density)
+                        if role == EventRole.CONFIRMATION and structural_draw() < breathing_room:
+                            on = False
+                    preceding_pickup = next(
+                        (
+                            event
+                            for event in events
+                            if event.instrument == InstrumentID.CLOSED_HAT
+                            and event.grid_tick == tick - step_tick
+                        ),
+                        None,
+                    )
+                    if (
+                        on
+                        and local % PPQ == 0
+                        and local != 0
+                        and preceding_pickup is not None
+                        and preceding_pickup.primary_role == EventRole.ANTICIPATION
+                    ):
+                        release_chance = 0.08 + 0.62 * dna.syncopation
+                        if structural_draw() < release_chance:
+                            on = False
                 elif instrument == InstrumentID.KICK:
                     anchor_chance = max(
                         0.08,
@@ -327,15 +446,39 @@ def generate_pattern(
                     if on:
                         role, accent = EventRole.DECORATION, 0.45 + tension * 0.2
                 elif instrument == InstrumentID.OPEN_HAT:
-                    on = slot == steps - 2 and structural_draw() < (
-                        0.04
-                        + dna.variation * 0.3
-                        + dna.surprise * 0.2
-                        + dna.motor_affordance * 0.16
-                        + tension * 0.12
+                    closed_here = any(
+                        event.instrument == InstrumentID.CLOSED_HAT and event.grid_tick == tick
+                        for event in events
+                    )
+                    next_local = local + step_tick
+                    spine_tick = PPQ // (3 if triplet_grid else 2)
+                    lead_into_spine = (
+                        next_local < meter.bar_ticks and next_local % spine_tick == 0
+                    )
+                    lead_into_snare = any(
+                        event.instrument == InstrumentID.SNARE
+                        and event.grid_tick == tick + step_tick
+                        for event in events
+                    )
+                    phrase_exit = slot >= steps - min(3, carrier_subdivisions)
+                    open_chance = (
+                        0.03
+                        + 0.22 * dna.variation
+                        + 0.16 * dna.surprise
+                        + 0.18 * dna.motor_affordance
+                        + 0.24 * dna.interlock
+                        + 0.12 * tension
                     ) * (1.08 - 0.45 * dna.hypnotic)
+                    on = (
+                        not closed_here
+                        and (lead_into_spine or lead_into_snare or phrase_exit)
+                        and structural_draw() < open_chance
+                    )
+                    if not on and not closed_here and local == rhythm_figure.turnaround_tick:
+                        on = structural_draw() < open_chance * (0.65 + 0.35 * tension)
                     if on:
-                        role, accent = EventRole.TRANSITION, 0.65
+                        role = EventRole.ANTICIPATION if lead_into_snare else EventRole.TRANSITION
+                        accent = 0.52 + 0.24 * tension
 
                 # Controlled omission preserves the first pulse carrier and phrase-ending recovery.
                 if (

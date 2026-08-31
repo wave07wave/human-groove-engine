@@ -25,7 +25,12 @@ def pattern(*, bars: int = 2, profile: str = "studio-tight-v1"):
 
 def test_profiles_are_versioned_complete_and_discoverable():
     identifiers = {item["profile_id"] for item in available_render_profiles()}
-    assert identifiers == {"studio-tight-v1", "warm-pocket-v1"}
+    assert identifiers == {
+        "studio-tight-v1",
+        "warm-pocket-v1",
+        "club-punch-v1",
+        "vintage-dust-v1",
+    }
     for identifier in identifiers:
         profile = load_render_profile(identifier)
         assert profile is not None and profile.version == "1.0.0"
