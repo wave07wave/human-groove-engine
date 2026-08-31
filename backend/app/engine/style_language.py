@@ -34,6 +34,20 @@ class HatStyleProfile:
 
 
 @dataclass(frozen=True)
+class HatPatternVariant:
+    """A bounded one-bar vocabulary item, expressed in 8th/16th indices."""
+
+    variant_id: str
+    omit_eighths: tuple[int, ...] = ()
+    add_sixteenths: tuple[int, ...] = ()
+    accent_eighths: tuple[int, ...] = ()
+    open_eighths: tuple[int, ...] = ()
+    subdivision_scale: float = 1.0
+    pickup_scale: float = 1.0
+    open_scale: float = 1.0
+
+
+@dataclass(frozen=True)
 class StyleKnowledgePack:
     pack_id: str
     version: str
@@ -167,3 +181,139 @@ def style_hat_profile(style: str, meter: MeterDefinition) -> HatStyleProfile:
             backbeat_space=0.14,
         )
     return HatStyleProfile()
+
+
+def style_hat_variants(style: str, meter: MeterDefinition) -> tuple[HatPatternVariant, ...]:
+    """Return several coherent vocabulary choices instead of one fixed loop."""
+    if (meter.numerator, meter.denominator) != (4, 4):
+        return (HatPatternVariant("neutral-carrier"),)
+    if style == "Funk":
+        return (
+            HatPatternVariant("funk-tight-16", accent_eighths=(0, 3, 6), open_eighths=(7,)),
+            HatPatternVariant(
+                "funk-linear-answer",
+                omit_eighths=(2, 5),
+                add_sixteenths=(3, 7, 11, 15),
+                accent_eighths=(1, 4, 7),
+                open_eighths=(3,),
+                pickup_scale=1.25,
+            ),
+            HatPatternVariant(
+                "funk-bark-turnaround",
+                omit_eighths=(1, 6),
+                add_sixteenths=(6, 14),
+                accent_eighths=(0, 5),
+                open_eighths=(5, 7),
+                subdivision_scale=1.25,
+                open_scale=1.35,
+            ),
+            HatPatternVariant(
+                "funk-space-and-push",
+                omit_eighths=(3, 4),
+                add_sixteenths=(2, 10, 13),
+                accent_eighths=(2, 6),
+                pickup_scale=1.4,
+            ),
+        )
+    if style == "Hip Hop":
+        return (
+            HatPatternVariant("hip-hop-head-nod", omit_eighths=(2, 6), accent_eighths=(0, 3, 5)),
+            HatPatternVariant(
+                "hip-hop-late-skitter",
+                omit_eighths=(1, 5),
+                add_sixteenths=(3, 7, 15),
+                accent_eighths=(0, 4, 6),
+                subdivision_scale=1.35,
+            ),
+            HatPatternVariant(
+                "hip-hop-broken-loop",
+                omit_eighths=(3, 4),
+                add_sixteenths=(5, 11),
+                accent_eighths=(1, 5, 7),
+                pickup_scale=1.2,
+            ),
+            HatPatternVariant(
+                "hip-hop-turnaround",
+                omit_eighths=(1,),
+                add_sixteenths=(13, 14, 15),
+                accent_eighths=(0, 4),
+                open_eighths=(7,),
+                open_scale=1.25,
+            ),
+        )
+    if style == "House":
+        return (
+            HatPatternVariant("house-classic-open", open_eighths=(1, 3, 5, 7)),
+            HatPatternVariant(
+                "house-closed-pump",
+                open_eighths=(3, 7),
+                accent_eighths=(1, 5),
+                subdivision_scale=1.2,
+            ),
+            HatPatternVariant(
+                "house-two-bar-lift",
+                add_sixteenths=(6, 14),
+                open_eighths=(5, 7),
+                accent_eighths=(3, 7),
+                open_scale=1.35,
+            ),
+            HatPatternVariant(
+                "house-break-breathe",
+                omit_eighths=(3,),
+                add_sixteenths=(5, 6, 13, 14),
+                open_eighths=(1, 7),
+                subdivision_scale=1.35,
+            ),
+        )
+    if style == "Rock":
+        return (
+            HatPatternVariant("rock-eighth-drive", accent_eighths=(0, 2, 4, 6)),
+            HatPatternVariant(
+                "rock-push-16",
+                add_sixteenths=(3, 7, 11, 15),
+                accent_eighths=(0, 4),
+                pickup_scale=1.25,
+            ),
+            HatPatternVariant(
+                "rock-open-chorus",
+                open_eighths=(3, 7),
+                accent_eighths=(1, 5),
+                open_scale=1.3,
+            ),
+            HatPatternVariant(
+                "rock-break-turnaround",
+                omit_eighths=(5,),
+                add_sixteenths=(10, 11, 14, 15),
+                open_eighths=(7,),
+                subdivision_scale=1.3,
+            ),
+        )
+    # These choices are deliberately style-neutral so that Balanced and the
+    # expressive intent presets also get fresh rhythmic shapes on every
+    # generation, instead of silently falling back to one carrier loop.
+    return (
+        HatPatternVariant("adaptive-steady", accent_eighths=(0, 2, 4, 6)),
+        HatPatternVariant(
+            "adaptive-push",
+            add_sixteenths=(3, 7, 11, 15),
+            accent_eighths=(1, 5),
+            pickup_scale=1.3,
+        ),
+        HatPatternVariant(
+            "adaptive-space",
+            omit_eighths=(3, 6),
+            add_sixteenths=(5, 13),
+            accent_eighths=(2, 7),
+            open_eighths=(7,),
+            subdivision_scale=1.2,
+        ),
+        HatPatternVariant(
+            "adaptive-lift",
+            omit_eighths=(4,),
+            add_sixteenths=(6, 10, 14, 15),
+            open_eighths=(3, 7),
+            accent_eighths=(3, 7),
+            subdivision_scale=1.35,
+            open_scale=1.25,
+        ),
+    )

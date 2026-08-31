@@ -15,7 +15,12 @@ from .phrase import choose_grammar, motif_for_bar, tension_curve
 from .pocket import pocket_for
 from .pulse import metric_gravity, strong_positions
 from .rhythm_language import phrase_rhythm_figure
-from .style_language import style_hat_profile, style_knowledge_pack, style_rhythm_profile
+from .style_language import (
+    style_hat_profile,
+    style_hat_variants,
+    style_knowledge_pack,
+    style_rhythm_profile,
+)
 
 
 def _event(
@@ -157,13 +162,18 @@ def generate_pattern(
     strong = strong_positions(meter)
     style_rhythm = style_rhythm_profile(style, meter)
     hat_style = style_hat_profile(style, meter)
+    hat_variants = style_hat_variants(style, meter)
     events: list[GrooveEvent] = []
+    hat_variant_ids: list[str] = []
 
     for bar in range(bars):
         bar_start = bar * meter.bar_ticks
         steps = meter.bar_ticks // step_tick
         motif = motif_for_bar(grammar, bar)
         rhythm_figure = phrase_rhythm_figure(meter, motif)
+        hat_variant_rng = hrng.stream("hat-vocabulary", candidate, bar // 2, motif)
+        hat_variant = hat_variants[int(hat_variant_rng.integers(len(hat_variants)))]
+        hat_variant_ids.append(hat_variant.variant_id)
         variation_scale = dna.variation * (0.25 if motif.startswith("A") else 0.8)
         tension = tensions[bar]
         for instrument in InstrumentID:
@@ -221,6 +231,8 @@ def generate_pattern(
                         for event in events
                     )
                     spine_tick = PPQ // (3 if triplet_grid else 2)
+                    eighth_index = local // (PPQ // 2) if local % (PPQ // 2) == 0 else None
+                    sixteenth_index = local // (PPQ // 4) if local % (PPQ // 4) == 0 else None
                     if hat_style.spine == "sixteenth":
                         spine = local % carrier_tick == 0
                     elif hat_style.spine == "offbeat":
@@ -255,7 +267,7 @@ def generate_pattern(
                         + 0.28 * dna.syncopation
                         + 0.18 * dna.motor_affordance
                         + 0.22 * hat_style.pickup_bias
-                    ) * (0.72 + 0.35 * tension)
+                    ) * (0.72 + 0.35 * tension) * hat_variant.pickup_scale
                     if (
                         not on
                         and previous_kick
@@ -312,7 +324,7 @@ def generate_pattern(
                         + dna.surprise * 0.12
                         + dna.metric_ambiguity * 0.11
                         + 0.22 * hat_style.subdivision_bias
-                    ) * (0.62 + 0.48 * tension)
+                    ) * (0.62 + 0.48 * tension) * hat_variant.subdivision_scale
                     if (
                         not on
                         and subdivision
@@ -332,6 +344,26 @@ def generate_pattern(
                         on = structural_draw() < style_rhythm.hat_probability
                         if on:
                             role, accent = EventRole.CONFIRMATION, 0.44 + 0.28 * gravity
+
+                    # Vocabulary-level variation happens after the shared
+                    # skeleton: it can leave a deliberate rest, add a legal
+                    # 16th answer or move the accent contour without changing
+                    # the meter or the selected style's core role.
+                    if (
+                        on
+                        and eighth_index in hat_variant.omit_eighths
+                        and role != EventRole.ANCHOR
+                    ):
+                        on = False
+                    if (
+                        not on
+                        and sixteenth_index in hat_variant.add_sixteenths
+                        and not kick_here
+                        and structural_draw() < 0.5 + 0.35 * dna.density
+                    ):
+                        on, role, accent = True, EventRole.DECORATION, 0.3 + 0.18 * tension
+                    if on and eighth_index in hat_variant.accent_eighths:
+                        accent = min(1.0, accent + 0.18 + 0.16 * dna.velocity_contrast)
 
                     # A small amount of space around some backbeats prevents a
                     # continuous grid from masking the snare's answer.
@@ -503,7 +535,10 @@ def generate_pattern(
                         + 0.24 * dna.interlock
                         + 0.12 * tension
                         + 0.42 * hat_style.open_bias
-                    ) * (1.08 - 0.45 * dna.hypnotic)
+                    ) * (1.08 - 0.45 * dna.hypnotic) * hat_variant.open_scale
+                    eighth_index = local // (PPQ // 2) if local % (PPQ // 2) == 0 else None
+                    if eighth_index in hat_variant.open_eighths:
+                        open_chance *= 1.65
                     two_bar_lift = (
                         hat_style.two_bar_variation
                         and bar % 2 == 1
@@ -607,6 +642,7 @@ def generate_pattern(
             knowledge_pack_id=pack.pack_id,
             knowledge_pack_version=pack.version,
             hat_language_profile=hat_style.profile_id,
+            hat_variant_ids=hat_variant_ids,
         ),
     )
     pattern.metadata.embodied_operator_arm = apply_embodied_operators(pattern)

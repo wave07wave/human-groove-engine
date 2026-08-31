@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from app.engine.generator import generate_pattern
-from app.engine.style_language import style_hat_profile, style_rhythm_profile
+from app.engine.style_language import style_hat_profile, style_hat_variants, style_rhythm_profile
 from app.models.event import InstrumentID
 from app.models.meter import MeterDefinition
 from app.presets import PRESETS
@@ -88,3 +88,63 @@ def test_declared_style_hat_languages_create_distinct_safe_shapes() -> None:
     assert counts["Funk"][0] > counts["Hip Hop"][0]
     assert counts["House"][1] > counts["House"][0]
     assert sum(counts["Rock"]) >= sum(counts["Hip Hop"])
+
+
+def test_style_hat_vocabulary_creates_many_seeded_shapes() -> None:
+    """Each built-in style has several phrase-safe alternatives, not one loop."""
+    meter = MeterDefinition.from_name("4/4")
+    for style in ("Funk", "Hip Hop", "House", "Rock"):
+        variants = style_hat_variants(style, meter)
+        assert len(variants) == 4
+        assert len({variant.variant_id for variant in variants}) == 4
+
+    patterns = [
+        generate_pattern(
+            bpm=122,
+            bars=4,
+            meter=meter,
+            intent=PRESETS["House"],
+            seed=seed,
+            style="House",
+            performance_mode="rule",
+        )
+        for seed in range(12)
+    ]
+    vocabulary_sequences = {tuple(pattern.metadata.hat_variant_ids) for pattern in patterns}
+    hat_shapes = {
+        tuple(
+            (event.instrument.value, event.grid_tick % meter.bar_ticks)
+            for event in pattern.events
+            if event.instrument in {InstrumentID.CLOSED_HAT, InstrumentID.OPEN_HAT}
+        )
+        for pattern in patterns
+    }
+
+    assert all(len(pattern.metadata.hat_variant_ids) == pattern.bars for pattern in patterns)
+    assert len(vocabulary_sequences) >= 8
+    assert len(hat_shapes) >= 8
+    balanced_variants = style_hat_variants("Balanced", meter)
+    assert len(balanced_variants) == 4
+    assert len({variant.variant_id for variant in balanced_variants}) == 4
+
+    compound_variants = style_hat_variants("Funk", MeterDefinition.from_name("6/8"))
+    assert compound_variants[0].variant_id == "neutral-carrier"
+
+
+def test_balanced_generation_uses_multiple_vocabulary_shapes() -> None:
+    meter = MeterDefinition.from_name("4/4")
+    patterns = [
+        generate_pattern(
+            bpm=100,
+            bars=4,
+            meter=meter,
+            intent=PRESETS["Balanced"],
+            seed=seed,
+            style="Balanced",
+            performance_mode="rule",
+        )
+        for seed in range(43, 55)
+    ]
+    sequences = {tuple(pattern.metadata.hat_variant_ids) for pattern in patterns}
+
+    assert len(sequences) >= 8
