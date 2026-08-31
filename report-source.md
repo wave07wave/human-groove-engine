@@ -1,0 +1,53 @@
+# スタイル適応ハイハット語法：調査・実装根拠
+
+対象: Human Groove EngineのFunk、Hip Hop、House、Rock。日付: 2026-08-31。
+
+## 結論
+
+ハイハットを一定の反復レーンとして扱わず、拍の骨格、キック／スネアへの応答、
+フレーズの遷移、音色の開閉、強弱を分離して生成する。ジャンル名は幅広い実践を
+包含するため、各プロファイルは「唯一正しい型」ではなく、明示した適用範囲内の
+出発点として扱う。
+
+## 根拠から導いた実装
+
+| スタイル | 生成の核 | 変化の扱い | 制約 |
+| --- | --- | --- | --- |
+| Funk | 16分を基準にした柔らかいレーン | キック直後、スネア前、フレーズ端の開閉と線的な隙間 | キック／スネアと重なる一部のハットを引き、開閉は同時発音しない |
+| Hip Hop | 8分を基準にした余白のあるレーン | 16分の限定的な細分化、キックへの短い応答 | 過剰なロールを常態化せず、既存の遅れたポケットを維持 |
+| House | オフビートのハット | 2小節目・フレーズ端の遷移変化 | 開いたハットは同時の閉じたハットを置き換える |
+| Rock | 8分のドライブ | 密度・テンポ・フレーズ終端に応じた16分化と開き | バックビートを覆い隠す連続的な細分化を抑える |
+
+Abletonは、Houseを強拍のハットを取り除いたオフビートの8分として説明し、
+線的ドラムを同時発音を減らした複合ラインとして提示している。
+[Ableton: Programming Beats 2](https://makingmusic.ableton.com/programming-beats-2-linear-drumming)
+
+DrumeoのFunk解説は、シンコペーション、リズムの変位、開いたハット、ゴースト、
+線的ドラムを特徴に挙げる。これをFunkの16分基準、キック／スネアとの隙間、短い
+オープン・アクセントへ対応させた。
+[Drumeo: A Drummer’s Guide To Funk](https://www.drumeo.com/beat/a-drummers-guide-to-funk/)
+
+RolandはHouseの四つ打ちとオフビート・ハット、伝統的Houseのオフビート・オープン
+ハット、2小節パターン終端の変化を明記している。
+[Roland: DJ-808 dance styles](https://www.roland.com/uk/blog/creating-beats-dance-styles-dj-808/)
+
+RolandのTrap／Lo-Fi解説は、Hip Hop系での8分の骨格と16分変化、ロール、
+Lo-Fiにおけるスウィング／非量子化／後ろ寄りのハットを区別する。本アプリの
+Hip Hopは後者を含む広い出発点として、細分化の発生を抑え、既存ポケットへ委ねる。
+[Roland: Trap and Lo-Fi Beats](https://articles.roland.com/trap-and-lo-fi-beats-with-zenbeats-and-roland-cloud/)
+
+Rockでは8分の基本から片手／両手の16分化、開いたハット、追加レイヤーが使われる。
+本実装では常時16分化せず、密度とフレーズ状態が十分な時だけ増やす。
+[Drumeo: A Drummer’s Guide To Rock](https://www.drumeo.com/beat/a-drummers-guide-to-rock/)
+
+音色面では、閉じたチップ／ショルダー、ペダル、半開き、全開の区別と、拍内の
+速度変化が自然さに重要だという実装上の指針がある。
+[MusicRadar: realistic hi-hat parts](https://www.musicradar.com/tuition/tech/how-to-program-realistic-sounding-hi-hat-parts-630716)
+
+## 検証境界
+
+- これらはスタイルの文化的帰属や個々の演奏家の模倣を主張しない。
+- 4/4の組込みスタイルでのみスタイル固有の語法を適用し、その他の拍子とカスタム
+  スタイルは拍子対応の中立語法へ戻す。
+- Closed/Open Hatは同一tickに置かず、Open Hatが選ばれた場合はClosed Hatを置換する。
+- テストではスタイル差、複数小節の変化、キック後の応答、開閉の排他性を確認する。

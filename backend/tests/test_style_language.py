@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from app.engine.generator import generate_pattern
-from app.engine.style_language import style_rhythm_profile
+from app.engine.style_language import style_hat_profile, style_rhythm_profile
 from app.models.event import InstrumentID
 from app.models.meter import MeterDefinition
 from app.presets import PRESETS
@@ -48,3 +48,43 @@ def test_unknown_style_does_not_impose_a_hidden_genre_pattern() -> None:
     profile = style_rhythm_profile("My own pocket", MeterDefinition.from_name("4/4"))
     assert not profile.forced_kick_ticks
     assert not profile.reinforced_hat_ticks
+
+
+def test_declared_style_hat_languages_create_distinct_safe_shapes() -> None:
+    meter = MeterDefinition.from_name("4/4")
+    styles = ("Funk", "Hip Hop", "House", "Rock")
+    profiles = {style: style_hat_profile(style, meter) for style in styles}
+    assert {profile.profile_id for profile in profiles.values()} == {
+        "funk-16th-linear-v1",
+        "hip-hop-pocket-8th-v1",
+        "house-offbeat-909-v1",
+        "rock-eighth-drive-v1",
+    }
+    compound_funk = style_hat_profile("Funk", MeterDefinition.from_name("6/8"))
+    assert compound_funk.profile_id == "neutral-hat-v1"
+    odd_funk = style_hat_profile("Funk", MeterDefinition.from_name("5/4"))
+    assert odd_funk.profile_id == "neutral-hat-v1"
+
+    patterns = {
+        style: generate_pattern(
+            bpm=112,
+            bars=4,
+            meter=meter,
+            intent=PRESETS[style],
+            seed=508,
+            style=style,
+            performance_mode="rule",
+        )
+        for style in profiles
+    }
+    counts = {}
+    for style, pattern in patterns.items():
+        closed = [event for event in pattern.events if event.instrument == InstrumentID.CLOSED_HAT]
+        opened = [event for event in pattern.events if event.instrument == InstrumentID.OPEN_HAT]
+        counts[style] = (len(closed), len(opened))
+        assert closed or opened
+        assert not {event.grid_tick for event in closed} & {event.grid_tick for event in opened}
+
+    assert counts["Funk"][0] > counts["Hip Hop"][0]
+    assert counts["House"][1] > counts["House"][0]
+    assert sum(counts["Rock"]) >= sum(counts["Hip Hop"])

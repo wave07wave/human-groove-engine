@@ -31,6 +31,7 @@ class PatternMetadata(BaseModel):
     embodied_operator_arm: str = "baseline"
     knowledge_pack_id: str = "neutral-v1"
     knowledge_pack_version: str = "1.0"
+    hat_language_profile: str = "neutral-hat-v1"
 
     @field_validator("style", mode="before")
     @classmethod

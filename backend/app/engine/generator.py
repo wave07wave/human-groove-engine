@@ -15,7 +15,7 @@ from .phrase import choose_grammar, motif_for_bar, tension_curve
 from .pocket import pocket_for
 from .pulse import metric_gravity, strong_positions
 from .rhythm_language import phrase_rhythm_figure
-from .style_language import style_knowledge_pack, style_rhythm_profile
+from .style_language import style_hat_profile, style_knowledge_pack, style_rhythm_profile
 
 
 def _event(
@@ -156,6 +156,7 @@ def generate_pattern(
     carrier_tick = PPQ // carrier_subdivisions
     strong = strong_positions(meter)
     style_rhythm = style_rhythm_profile(style, meter)
+    hat_style = style_hat_profile(style, meter)
     events: list[GrooveEvent] = []
 
     for bar in range(bars):
@@ -220,18 +221,28 @@ def generate_pattern(
                         for event in events
                     )
                     spine_tick = PPQ // (3 if triplet_grid else 2)
-                    spine = local % spine_tick == 0
+                    if hat_style.spine == "sixteenth":
+                        spine = local % carrier_tick == 0
+                    elif hat_style.spine == "offbeat":
+                        spine = local % PPQ == PPQ // 2
+                    else:
+                        spine = local % spine_tick == 0
                     subdivision = local % carrier_tick == 0
                     phrase_end_window = slot >= steps - min(4, carrier_subdivisions)
                     spine_chance = min(
                         0.98,
-                        0.58
-                        + 0.23 * dna.pulse_stability
-                        + 0.18 * dna.motor_affordance
-                        + 0.12 * dna.density
-                        + 0.08 * dna.beat_salience,
+                        0.25
+                        + 0.55 * hat_style.spine_probability
+                        + 0.13 * dna.pulse_stability
+                        + 0.11 * dna.motor_affordance
+                        + 0.08 * dna.density
+                        + 0.06 * dna.beat_salience,
                     )
-                    on = spine and (local == 0 or structural_draw() < spine_chance)
+                    on = spine and (
+                        local == 0
+                        or hat_style.spine == "offbeat"
+                        or structural_draw() < spine_chance
+                    )
                     if on:
                         role = EventRole.ANCHOR if local % PPQ == 0 else EventRole.CONFIRMATION
                         accent = 0.46 + 0.42 * gravity
@@ -243,6 +254,7 @@ def generate_pattern(
                         + 0.38 * dna.interlock
                         + 0.28 * dna.syncopation
                         + 0.18 * dna.motor_affordance
+                        + 0.22 * hat_style.pickup_bias
                     ) * (0.72 + 0.35 * tension)
                     if (
                         not on
@@ -299,6 +311,7 @@ def generate_pattern(
                         + variation_scale * 0.22
                         + dna.surprise * 0.12
                         + dna.metric_ambiguity * 0.11
+                        + 0.22 * hat_style.subdivision_bias
                     ) * (0.62 + 0.48 * tension)
                     if (
                         not on
@@ -307,7 +320,12 @@ def generate_pattern(
                         and structural_draw() < subdivision_chance
                     ):
                         on, role, accent = True, EventRole.DECORATION, 0.26 + 0.2 * tension
-                    if not on and phrase_end_window and motif != "A" and gravity < 0.7:
+                    if (
+                        not on
+                        and phrase_end_window
+                        and motif != "A"
+                        and gravity < 0.7
+                    ):
                         if structural_draw() < subdivision_chance * 0.9:
                             on, role, accent = True, EventRole.TRANSITION, 0.34 + 0.22 * tension
                     if not on and local in style_rhythm.reinforced_hat_ticks:
@@ -318,8 +336,22 @@ def generate_pattern(
                     # A small amount of space around some backbeats prevents a
                     # continuous grid from masking the snare's answer.
                     if on and snare_here and local != 0:
-                        breathing_room = (0.06 + 0.18 * dna.variation) * (1 - 0.5 * dna.density)
+                        breathing_room = (
+                            0.06 + 0.18 * dna.variation + 0.18 * hat_style.backbeat_space
+                        ) * (1 - 0.5 * dna.density)
                         if role == EventRole.CONFIRMATION and structural_draw() < breathing_room:
+                            on = False
+                    if (
+                        on
+                        and (kick_here or snare_here)
+                        and local != 0
+                        and hat_style.linear_bias > 0
+                        and role != EventRole.ANCHOR
+                    ):
+                        linear_space = (
+                            0.03 + 0.26 * hat_style.linear_bias * (0.45 + 0.55 * variation_scale)
+                        )
+                        if structural_draw() < linear_space:
                             on = False
                     preceding_pickup = next(
                         (
@@ -337,7 +369,9 @@ def generate_pattern(
                         and preceding_pickup is not None
                         and preceding_pickup.primary_role == EventRole.ANTICIPATION
                     ):
-                        release_chance = 0.08 + 0.62 * dna.syncopation
+                        release_chance = (
+                            0.08 + 0.62 * dna.syncopation + 0.14 * hat_style.linear_bias
+                        )
                         if structural_draw() < release_chance:
                             on = False
                 elif instrument == InstrumentID.KICK:
@@ -468,15 +502,41 @@ def generate_pattern(
                         + 0.18 * dna.motor_affordance
                         + 0.24 * dna.interlock
                         + 0.12 * tension
+                        + 0.42 * hat_style.open_bias
                     ) * (1.08 - 0.45 * dna.hypnotic)
-                    on = (
-                        not closed_here
-                        and (lead_into_spine or lead_into_snare or phrase_exit)
-                        and structural_draw() < open_chance
+                    two_bar_lift = (
+                        hat_style.two_bar_variation
+                        and bar % 2 == 1
+                        and phrase_exit
                     )
-                    if not on and not closed_here and local == rhythm_figure.turnaround_tick:
+                    open_can_replace_closed = (
+                        hat_style.open_replaces_closed
+                        or (
+                            hat_style.open_bias >= 0.45
+                            and (phrase_exit or local == rhythm_figure.turnaround_tick)
+                        )
+                    )
+                    on = (
+                        (not closed_here or open_can_replace_closed)
+                        and (lead_into_spine or lead_into_snare or phrase_exit)
+                        and structural_draw() < open_chance * (1.25 if two_bar_lift else 1.0)
+                    )
+                    if (
+                        not on
+                        and (not closed_here or open_can_replace_closed)
+                        and local == rhythm_figure.turnaround_tick
+                    ):
                         on = structural_draw() < open_chance * (0.65 + 0.35 * tension)
                     if on:
+                        if closed_here:
+                            events[:] = [
+                                event
+                                for event in events
+                                if not (
+                                    event.instrument == InstrumentID.CLOSED_HAT
+                                    and event.grid_tick == tick
+                                )
+                            ]
                         role = EventRole.ANTICIPATION if lead_into_snare else EventRole.TRANSITION
                         accent = 0.52 + 0.24 * tension
 
@@ -546,6 +606,7 @@ def generate_pattern(
             render_profile=render_profile,
             knowledge_pack_id=pack.pack_id,
             knowledge_pack_version=pack.version,
+            hat_language_profile=hat_style.profile_id,
         ),
     )
     pattern.metadata.embodied_operator_arm = apply_embodied_operators(pattern)
