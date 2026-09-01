@@ -59,6 +59,13 @@ def export_midi(pattern: GroovePattern) -> bytes:
     tempo = mido.bpm2tempo(pattern.bpm)
     open_hat_choke_ends = _open_hat_choke_ends(pattern, tempo)
     metadata = mido.MidiTrack()
+    detroit = pattern.metadata.detroit_soul
+    detroit_metadata = f"detroit_soul={detroit.mode}"
+    if detroit.mode == "blend":
+        detroit_metadata += (
+            f";detroit_blend={detroit.blend.benny:.4f},"
+            f"{detroit.blend.pistol:.4f},{detroit.blend.uriel:.4f}"
+        )
     metadata.extend(
         _to_delta(
             [
@@ -80,7 +87,8 @@ def export_midi(pattern: GroovePattern) -> bytes:
                         "text",
                         text=(
                             f"engine={pattern.metadata.engine_version};schema={pattern.metadata.schema_version};"
-                            f"seed={pattern.metadata.master_seed};rng={pattern.metadata.rng_algorithm}"
+                            f"seed={pattern.metadata.master_seed};rng={pattern.metadata.rng_algorithm};"
+                            f"{detroit_metadata}"
                         ),
                     ),
                 ),

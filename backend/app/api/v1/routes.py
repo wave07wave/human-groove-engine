@@ -70,6 +70,7 @@ def generate(request: GenerateRequest) -> GenerateResponse:
             request.preset,
             f"{request.meter.numerator}/{request.meter.denominator}",
         ),
+        detroit_soul=request.detroit_soul,
     )
     for pattern in candidates:
         db.save_generation(pattern)
@@ -223,6 +224,8 @@ def capabilities() -> dict:
         "effective_preference_evidence": True,
         "style_conditioned_pocket": True,
         "genre_rhythm_language": True,
+        "detroit_soul_drummer_styles": True,
+        "detroit_soul_blending": True,
         "learned_performance_model": model_status(),
         "reference_render_analysis": True,
         "render_profiles": available_render_profiles(),

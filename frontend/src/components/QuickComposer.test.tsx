@@ -41,6 +41,40 @@ it('passes the selected drum sound into easy-mode generation', async () => {
   await waitFor(() => expect(onReady).toHaveBeenCalled())
 })
 
+it('offers every Detroit Soul drummer choice and sends the selected profile', async () => {
+  render(<QuickComposer groove={null} bass={null} onReady={vi.fn()} onOpenDetails={vi.fn()} />)
+  const drummer = await screen.findByLabelText('Detroit Soul ドラマー') as HTMLSelectElement
+
+  expect(Array.from(drummer.options).map(option => option.value)).toEqual([
+    'standard', 'benny', 'pistol', 'uriel', 'blend',
+  ])
+  fireEvent.change(drummer, { target: { value: 'uriel' } })
+  expect(screen.getByText(/広い間、ゴーストノート、強い一打/)).toBeTruthy()
+  expect(screen.getByText(/本人の演奏の完全な再現/)).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: 'まとめて作成' }))
+
+  await waitFor(() => expect(mocks.generate).toHaveBeenCalledTimes(1))
+  expect(mocks.generate.mock.calls[0][0].detroit_soul).toEqual({
+    mode: 'uriel',
+    blend: { benny: 1 / 3, pistol: 1 / 3, uriel: 1 / 3 },
+  })
+})
+
+it('keeps an existing detailed blend when returning to easy mode', async () => {
+  const blend = { benny: .55, pistol: .3, uriel: .15 }
+  const existing = {
+    pattern_id: 'existing-detroit-blend',
+    metadata: { detroit_soul: { mode: 'blend', blend } },
+  } as GroovePattern
+  render(<QuickComposer groove={existing} bass={null} onReady={vi.fn()} onOpenDetails={vi.fn()} />)
+
+  expect((await screen.findByLabelText('Detroit Soul ドラマー') as HTMLSelectElement).value).toBe('blend')
+  fireEvent.click(screen.getByRole('button', { name: 'まとめて作成' }))
+
+  await waitFor(() => expect(mocks.generate).toHaveBeenCalledTimes(1))
+  expect(mocks.generate.mock.calls[0][0].detroit_soul).toEqual({ mode: 'blend', blend })
+})
+
 it('forwards a selected genre style and its preset intent', async () => {
   const houseIntent = { target_dna: { density: .68 } }
   mocks.groovePresets.mockResolvedValue({

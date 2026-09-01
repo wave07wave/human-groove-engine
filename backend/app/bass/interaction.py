@@ -366,6 +366,7 @@ def _co_created_groove(
             "rule" if source.metadata.performance_model == "rule-pocket-v1" else "auto"
         ),
         render_profile=source.metadata.render_profile,
+        detroit_soul=source.metadata.detroit_soul,
     )
     protected = [
         event

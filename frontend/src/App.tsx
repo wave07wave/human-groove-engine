@@ -9,6 +9,7 @@ import { IntentCapturePanel } from './components/IntentCapturePanel'
 import { BassApp } from './components/BassApp'
 import { BlindEvaluationPanel } from './components/BlindEvaluationPanel'
 import { EmbodiedFeedbackPanel } from './components/EmbodiedFeedbackPanel'
+import { DetroitSoulControl } from './components/DetroitSoulControl'
 import { Knob } from './components/Knob'
 import { ListenerPanel } from './components/ListenerPanel'
 import { QuickComposer } from './components/QuickComposer'
@@ -16,7 +17,8 @@ import { StepGrid } from './components/StepGrid'
 import { TasteTrainer } from './components/TasteTrainer'
 import { DRUM_SOUND_OPTIONS, type DrumSoundId } from './audio/drumKitProfile'
 import { useHistory } from './hooks/useHistory'
-import type { BassPattern, GenerateRequest, GrooveDNA, GrooveEvent, GrooveIntent, GroovePattern, GroovePreferenceSummary, Instrument, PresetsResponse } from './types/generated'
+import type { BassPattern, DetroitSoulSettings, GenerateRequest, GrooveDNA, GrooveEvent, GrooveIntent, GroovePattern, GroovePreferenceSummary, Instrument, PresetsResponse } from './types/generated'
+import { DEFAULT_DETROIT_SOUL } from './utils/detroitSoul'
 import { METERS, METER_OPTIONS } from './utils/meters'
 import { anonymousSessionId } from './utils/anonymousSession'
 const baseDNA: GrooveDNA = { pulse_stability:.75,beat_salience:.75,syncopation:.45,anticipation:.35,omission:.2,density:.5,repetition:.65,variation:.35,interlock:.6,swing:.15,microtiming:.3,velocity_contrast:.45,duration_contrast:.3,low_end_anchor:.7,metric_ambiguity:.2,ghost_density:.25,surprise:.35,recovery_strength:.7,motor_affordance:.75,hypnotic:.35,phrase_development:.4 }
@@ -32,6 +34,7 @@ export function GrooveApp({ onPatternChange, externalPattern }: { onPatternChang
   const [intent, setIntent] = useState<GrooveIntent>(baseIntent); const [preset, setPreset] = useState('Balanced')
   const [bpm, setBpm] = useState(100); const [bars, setBars] = useState(4); const [meter, setMeter] = useState('4/4'); const [resolution, setResolution] = useState(4); const [seed, setSeed] = useState(42)
   const [performanceMode, setPerformanceMode] = useState<'auto'|'rule'>('auto')
+  const [detroitSoul, setDetroitSoul] = useState<DetroitSoulSettings>(DEFAULT_DETROIT_SOUL)
   const [renderProfile, setRenderProfile] = useState<RenderProfile>('studio-tight-v1')
   const [candidates, setCandidates] = useState<GroovePattern[]>([]); const history = useHistory<GroovePattern>(null)
   const [busy, setBusy] = useState(false); const [error, setError] = useState(''); const [playing, setPlaying] = useState(false)
@@ -39,6 +42,7 @@ export function GrooveApp({ onPatternChange, externalPattern }: { onPatternChang
   const [selectedEvent, setSelectedEvent] = useState<GrooveEvent | null>(null); const [advanced, setAdvanced] = useState<AdvancedTab>('拍の安定')
   const [preference, setPreference] = useState<GroovePreferenceSummary | null>(null)
   const evaluationSequence = useRef(0)
+  const detroitPatternId = useRef<string | null>(null)
   const latestExternalPattern = useRef<GroovePattern | null | undefined>(externalPattern)
   const pattern = history.present
   const commitHistory = history.commit
@@ -58,6 +62,7 @@ export function GrooveApp({ onPatternChange, externalPattern }: { onPatternChang
     setIntent(structuredClone(externalPattern.intent))
     setPreset(externalPattern.metadata.style)
     setPerformanceMode(externalPattern.metadata.performance_model === 'rule-pocket-v1' ? 'rule' : 'auto')
+    setDetroitSoul(structuredClone(externalPattern.metadata.detroit_soul ?? DEFAULT_DETROIT_SOUL))
     const profile = externalPattern.metadata.render_profile
     if (DRUM_SOUND_OPTIONS.some(option => option.id === profile)) setRenderProfile(profile as RenderProfile)
   }, [externalPattern, pattern?.pattern_id, commitHistory])
@@ -65,6 +70,11 @@ export function GrooveApp({ onPatternChange, externalPattern }: { onPatternChang
     const profile = pattern?.metadata.render_profile
     if (DRUM_SOUND_OPTIONS.some(option => option.id === profile)) setRenderProfile(profile as RenderProfile)
   }, [pattern?.metadata.render_profile])
+  useEffect(() => {
+    if (!pattern || detroitPatternId.current === pattern.pattern_id) return
+    detroitPatternId.current = pattern.pattern_id
+    setDetroitSoul(structuredClone(pattern.metadata.detroit_soul ?? DEFAULT_DETROIT_SOUL))
+  }, [pattern])
   useEffect(() => { api.presets().then(data => { setPresets(data); if (!latestExternalPattern.current) setIntent(data.built_in.Balanced) }).catch(() => setError('Backendに接続できません。起動手順を確認してください。')) }, [])
   useEffect(() => {
     let active = true
@@ -75,7 +85,7 @@ export function GrooveApp({ onPatternChange, externalPattern }: { onPatternChang
   const generate = async () => { const sequence = ++evaluationSequence.current; setBusy(true); setError(''); try {
     const nextSeed = seed >= 2_147_483_647 ? 0 : seed + 1
     setSeed(nextSeed)
-    const request: GenerateRequest = { bpm,bars,meter:{...METERS[meter],subdivisions_per_quarter:resolution},intent,preset,seed:nextSeed,mode:'preview',performance_mode:performanceMode,render_profile:renderProfile,candidate_count:4,candidate_strategy:'quality', anonymous_session_id:anonymousSessionId() }
+    const request: GenerateRequest = { bpm,bars,meter:{...METERS[meter],subdivisions_per_quarter:resolution},intent,preset,seed:nextSeed,mode:'preview',performance_mode:performanceMode,render_profile:renderProfile,detroit_soul:detroitSoul,candidate_count:4,candidate_strategy:'quality', anonymous_session_id:anonymousSessionId() }
     const response = await api.generate(request); if (sequence !== evaluationSequence.current) return; setCandidates(response.candidates); setPreference(response.preference_profile); history.commit(response.candidates[0]); setSelectedBars(new Set()); setSelectedEvent(null)
   } catch (e) { setError(String(e)) } finally { setBusy(false) } }
   const choosePreset = (name: string) => { setPreset(name); const found = presets?.built_in[name] ?? presets?.user[name]; if (found) setIntent(structuredClone(found)) }
@@ -104,7 +114,7 @@ export function GrooveApp({ onPatternChange, externalPattern }: { onPatternChang
   const undo = () => { evaluationSequence.current += 1; history.undo() }
   const redo = () => { evaluationSequence.current += 1; history.redo() }
   const activeDNAGroup = advanced === 'リスナー' ? null : ADVANCED_DNA_GROUPS[advanced]
-  const evaluationRequest = useMemo<GenerateRequest>(() => ({ bpm,bars,meter:{...METERS[meter],subdivisions_per_quarter:resolution},intent,preset,seed,mode:'preview',performance_mode:'auto',render_profile:renderProfile,candidate_count:1,candidate_strategy:'quality', anonymous_session_id:anonymousSessionId() }), [bpm,bars,meter,resolution,intent,preset,seed,renderProfile])
+  const evaluationRequest = useMemo<GenerateRequest>(() => ({ bpm,bars,meter:{...METERS[meter],subdivisions_per_quarter:resolution},intent,preset,seed,mode:'preview',performance_mode:'auto',render_profile:renderProfile,detroit_soul:detroitSoul,candidate_count:1,candidate_strategy:'quality', anonymous_session_id:anonymousSessionId() }), [bpm,bars,meter,resolution,intent,preset,seed,renderProfile,detroitSoul])
   return <div className="app-shell">
     <header><div className="brand-mark">HGE</div><div><p className="eyebrow">HUMAN GROOVE ENGINE</p><h1>少しの揺らぎが、Grooveを生む。</h1></div><div className="header-actions"><button className="ghost-button" disabled={!history.canUndo} onClick={undo}>↶ 戻す</button><button className="ghost-button" disabled={!history.canRedo} onClick={redo}>↷ やり直す</button></div></header>
     <main>
@@ -119,6 +129,7 @@ export function GrooveApp({ onPatternChange, externalPattern }: { onPatternChang
           <label>演奏感<select value={performanceMode} onChange={e=>setPerformanceMode(e.target.value as 'auto'|'rule')}><option value="auto">学習済みの人間演奏</option><option value="rule">精密なルール</option></select></label>
           <label>ドラム音色<select value={renderProfile} onChange={e=>chooseRenderProfile(e.target.value as RenderProfile)}>{DRUM_SOUND_OPTIONS.map(option=><option key={option.id} value={option.id}>{option.label}</option>)}</select></label>
         </div>
+        <DetroitSoulControl value={detroitSoul} onChange={setDetroitSoul}/>
         <div className="knob-row">{controlMap.map(([label,key])=><Knob key={key} label={label} value={intent.target_dna[key]} onChange={value=>setDNA(key,value)}/>)}</div>
         <div className="primary-actions"><button className="generate" disabled={busy} onClick={generate}>{busy?'作成中…':'Grooveを作成'}</button><button disabled={!pattern} className={playing?'play active':'play'} onClick={()=>{ if (pattern) void import('./audio/preview').then(module=>module.togglePreview(pattern,setPlaying)).catch(cause=>setError(`音声を開始できません: ${String(cause)}`)) }}>{playing?'■ 停止':'▶ 再生'}</button><button disabled={!pattern||busy} className="secondary" onClick={regenerate}>↻ 選択範囲を再作成</button><button disabled={!pattern} className="secondary" onClick={()=>pattern&&api.midi(pattern)}>↓ MIDI</button></div>
         {error&&<p className="error">{error}</p>}

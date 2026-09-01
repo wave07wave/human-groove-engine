@@ -83,6 +83,121 @@ it('marks a candidate created by preference-guided search', async () => {
   expect(await screen.findByText('好み探索 · 1 events')).toBeTruthy()
 })
 
+it('sends the selected Detroit Soul style and blend influences', async () => {
+  const requests: GenerateRequest[] = []
+  vi.stubGlobal('fetch', vi.fn((input: string | URL | Request, init?: RequestInit) => {
+    const url = String(input)
+    if (url === '/api/v1/presets') return Promise.resolve({ ok: true, json: async () => ({ built_in: { Balanced: intent, Funk: intent }, user: {} }) } as Response)
+    if (url === '/api/v1/generate') {
+      requests.push(JSON.parse(String(init?.body)) as GenerateRequest)
+      return Promise.resolve({ ok: true, json: async () => ({ candidates: [groove] }) } as Response)
+    }
+    return new Promise(() => undefined)
+  }))
+
+  render(<GrooveApp />)
+  const drummer = await screen.findByLabelText('Detroit Soul ドラマー')
+  expect(Array.from((drummer as HTMLSelectElement).options).map(option => option.value)).toEqual([
+    'standard', 'benny', 'pistol', 'uriel', 'blend',
+  ])
+  fireEvent.change(drummer, { target: { value: 'pistol' } })
+  expect(screen.getByText(/重いハイハットの会話/)).toBeTruthy()
+  fireEvent.change(drummer, { target: { value: 'blend' } })
+  fireEvent.change(screen.getByLabelText('Benny の影響度'), { target: { value: '.6' } })
+  fireEvent.change(screen.getByLabelText('Pistol の影響度'), { target: { value: '.25' } })
+  fireEvent.change(screen.getByLabelText('Uriel の影響度'), { target: { value: '.15' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Grooveを作成' }))
+
+  await waitFor(() => expect(requests).toHaveLength(1))
+  expect(requests[0].detroit_soul).toEqual({
+    mode: 'blend',
+    blend: { benny: .6, pistol: .25, uriel: .15 },
+  })
+  expect(screen.getByText(/本人の演奏の完全な再現/)).toBeTruthy()
+})
+
+it('keeps a pending Detroit Soul choice when the current pattern is re-evaluated', async () => {
+  const current = {
+    ...groove,
+    pattern_id: 'pending-detroit-style',
+    metadata: {
+      ...groove.metadata,
+      detroit_soul: {
+        mode: 'standard',
+        blend: { benny: 1 / 3, pistol: 1 / 3, uriel: 1 / 3 },
+      },
+    },
+  } as GroovePattern
+  const evaluations: GroovePattern[] = []
+  vi.stubGlobal('fetch', vi.fn((input: string | URL | Request, init?: RequestInit) => {
+    const url = String(input)
+    if (url === '/api/v1/presets') return Promise.resolve({ ok: true, json: async () => ({ built_in: { Balanced: intent }, user: {} }) } as Response)
+    if (url === '/api/v1/generate') return Promise.resolve({ ok: true, json: async () => ({ candidates: [current] }) } as Response)
+    if (url === '/api/v1/evaluate') {
+      const body = JSON.parse(String(init?.body)) as GroovePattern
+      evaluations.push(body)
+      return Promise.resolve({ ok: true, json: async () => structuredClone(body) } as Response)
+    }
+    return new Promise(() => undefined)
+  }))
+
+  render(<GrooveApp />)
+  fireEvent.click(await screen.findByRole('button', { name: 'Grooveを作成' }))
+  await screen.findByText('Evaluation race groove')
+  const drummer = screen.getByLabelText('Detroit Soul ドラマー') as HTMLSelectElement
+  fireEvent.change(drummer, { target: { value: 'pistol' } })
+  fireEvent.change(screen.getByLabelText('ドラム音色'), {
+    target: { value: 'warm-pocket-v1' },
+  })
+
+  await waitFor(() => expect(evaluations).toHaveLength(1))
+  await waitFor(() => expect(drummer.value).toBe('pistol'))
+})
+
+it('restores each generated Detroit Soul setting through Undo and Redo history', async () => {
+  let generation = 0
+  vi.stubGlobal('fetch', vi.fn((input: string | URL | Request, init?: RequestInit) => {
+    const url = String(input)
+    if (url === '/api/v1/presets') {
+      return Promise.resolve({ ok: true, json: async () => ({ built_in: { Balanced: intent, Funk: intent }, user: {} }) } as Response)
+    }
+    if (url === '/api/v1/generate') {
+      generation += 1
+      const request = JSON.parse(String(init?.body)) as GenerateRequest
+      const candidate = {
+        ...groove,
+        pattern_id: `detroit-history-${generation}`,
+        metadata: {
+          ...groove.metadata,
+          detroit_soul: structuredClone(request.detroit_soul),
+        },
+      } as GroovePattern
+      return Promise.resolve({ ok: true, json: async () => ({ candidates: [candidate] }) } as Response)
+    }
+    return Promise.reject(new Error('not needed in this test'))
+  }))
+
+  render(<GrooveApp />)
+  const drummer = await screen.findByLabelText('Detroit Soul ドラマー') as HTMLSelectElement
+  const generateButton = screen.getByRole('button', { name: 'Grooveを作成' }) as HTMLButtonElement
+  fireEvent.change(drummer, { target: { value: 'benny' } })
+  fireEvent.click(generateButton)
+  await waitFor(() => expect(generation).toBe(1))
+  await waitFor(() => expect(generateButton.disabled).toBe(false))
+  await waitFor(() => expect(drummer.value).toBe('benny'))
+
+  fireEvent.change(drummer, { target: { value: 'uriel' } })
+  fireEvent.click(generateButton)
+  await waitFor(() => expect(generation).toBe(2))
+  await waitFor(() => expect(generateButton.disabled).toBe(false))
+  await waitFor(() => expect(drummer.value).toBe('uriel'))
+
+  fireEvent.click(screen.getByRole('button', { name: '↶ 戻す' }))
+  await waitFor(() => expect(drummer.value).toBe('benny'))
+  fireEvent.click(screen.getByRole('button', { name: '↷ やり直す' }))
+  await waitFor(() => expect(drummer.value).toBe('uriel'))
+})
+
 it('keeps an Easy-mode pattern settings intact when opening detailed editing', async () => {
   const requests: GenerateRequest[] = []
   const externalIntent = {
@@ -102,6 +217,10 @@ it('keeps an Easy-mode pattern settings intact when opening detailed editing', a
       style: 'House',
       performance_model: 'rule-pocket-v1',
       render_profile: 'warm-pocket-v1',
+      detroit_soul: {
+        mode: 'uriel',
+        blend: { benny: 1 / 3, pistol: 1 / 3, uriel: 1 / 3 },
+      },
     },
   } as GroovePattern
   vi.stubGlobal('fetch', vi.fn((input: string | URL | Request, init?: RequestInit) => {
@@ -125,6 +244,7 @@ it('keeps an Easy-mode pattern settings intact when opening detailed editing', a
   expect((screen.getByLabelText('スタイル') as HTMLSelectElement).value).toBe('House')
   expect((screen.getByLabelText('演奏感') as HTMLSelectElement).value).toBe('rule')
   expect((screen.getByLabelText('ドラム音色') as HTMLSelectElement).value).toBe('warm-pocket-v1')
+  expect((screen.getByLabelText('Detroit Soul ドラマー') as HTMLSelectElement).value).toBe('uriel')
 
   fireEvent.click(screen.getByRole('button', { name: 'Grooveを作成' }))
   await waitFor(() => expect(requests).toHaveLength(1))
@@ -135,6 +255,7 @@ it('keeps an Easy-mode pattern settings intact when opening detailed editing', a
     preset: 'House',
     performance_mode: 'rule',
     render_profile: 'warm-pocket-v1',
+    detroit_soul: { mode: 'uriel' },
     intent: { target_dna: { density: .84, variation: .72 } },
   })
 })

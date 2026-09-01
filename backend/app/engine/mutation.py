@@ -75,6 +75,7 @@ def regenerate_selected(
             "rule" if pattern.metadata.performance_model == "rule-pocket-v1" else "auto"
         ),
         render_profile=pattern.metadata.render_profile,
+        detroit_soul=pattern.metadata.detroit_soul,
     )
     result = deepcopy(pattern)
     kept = [

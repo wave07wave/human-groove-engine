@@ -5,7 +5,7 @@ import math
 from app.analysis.listener import analyze_pattern
 from app.audio import analyze_reference_render
 from app.models.evaluation import MotorTempoProfile
-from app.models.groove import GrooveIntent
+from app.models.groove import DetroitSoulSettings, GrooveIntent
 from app.models.meter import MeterDefinition
 from app.models.pattern import GroovePattern
 from app.models.preference import GroovePreferenceSummary
@@ -84,6 +84,7 @@ def generate_candidate_pool(
     preference: GroovePreferenceSummary | None = None,
     motor_tempo_profile: MotorTempoProfile | None = None,
     embodied_operator_scores: dict[str, float] | None = None,
+    detroit_soul: DetroitSoulSettings | None = None,
 ) -> list[GroovePattern]:
     pool_size = 16 if mode == "preview" else 64
     guided_intent, guidance = preference_guided_groove_intent(intent, preference)
@@ -102,6 +103,7 @@ def generate_candidate_pool(
             style=preset,
             performance_mode=performance_mode,
             render_profile=render_profile,
+            detroit_soul=detroit_soul,
         )
         # Candidate arms are a generation intervention, not a mutation of the
         # user's requested Intent or their stored preference evidence.
@@ -131,6 +133,7 @@ def generate_candidates(
     preference: GroovePreferenceSummary | None = None,
     motor_tempo_profile: MotorTempoProfile | None = None,
     embodied_operator_scores: dict[str, float] | None = None,
+    detroit_soul: DetroitSoulSettings | None = None,
 ) -> list[GroovePattern]:
     pool = generate_candidate_pool(
         bpm=bpm,
@@ -145,6 +148,7 @@ def generate_candidates(
         preference=preference,
         motor_tempo_profile=motor_tempo_profile,
         embodied_operator_scores=embodied_operator_scores,
+        detroit_soul=detroit_soul,
     )
 
     render_pool_size = min(len(pool), 6 if mode == "preview" else 12)

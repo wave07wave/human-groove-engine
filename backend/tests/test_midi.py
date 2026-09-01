@@ -7,6 +7,7 @@ from conftest import intent, meter
 from app.engine.generator import generate_pattern
 from app.midi.exporter import export_midi
 from app.models.event import InstrumentID
+from app.models.groove import DetroitSoulBlend, DetroitSoulSettings
 
 
 def _absolute_note_messages(track: mido.MidiTrack):
@@ -91,3 +92,24 @@ def test_midi_explicitly_chokes_an_open_hat_with_the_next_hat_hit():
         if message.type == "note_off" and message.note == 46
     )
     assert note_off_tick == 480
+
+
+def test_midi_metadata_preserves_detroit_soul_style_and_blend():
+    pattern = generate_pattern(
+        bpm=105,
+        bars=2,
+        meter=meter(),
+        intent=intent(),
+        seed=313,
+        style="Funk",
+        performance_mode="rule",
+        detroit_soul=DetroitSoulSettings(
+            mode="blend",
+            blend=DetroitSoulBlend(benny=0.5, pistol=0.3, uriel=0.2),
+        ),
+    )
+    midi = mido.MidiFile(file=BytesIO(export_midi(pattern)))
+    text = " ".join(message.text for message in midi.tracks[0] if message.type == "text")
+
+    assert "detroit_soul=blend" in text
+    assert "detroit_blend=0.5000,0.3000,0.2000" in text

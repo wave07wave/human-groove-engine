@@ -4,7 +4,7 @@ from typing import Literal
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from .event import InstrumentID
-from .groove import GrooveIntent
+from .groove import DetroitSoulSettings, GrooveIntent
 from .meter import MeterDefinition
 from .pattern import GroovePattern
 from .preference import GroovePreferenceSummary
@@ -19,6 +19,7 @@ class GenerateRequest(BaseModel):
     seed: int = Field(42, ge=0)
     mode: Literal["preview", "high_quality"] = "preview"
     performance_mode: Literal["auto", "rule"] = "auto"
+    detroit_soul: DetroitSoulSettings = Field(default_factory=DetroitSoulSettings)
     render_profile: Literal[
         "studio-tight-v1", "warm-pocket-v1", "club-punch-v1", "vintage-dust-v1", "off"
     ] = "studio-tight-v1"

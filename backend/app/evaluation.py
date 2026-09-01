@@ -42,6 +42,7 @@ def create_blind_session(request: BlindSessionRequest, db: GrooveDatabase) -> Bl
             style=generation.preset,
             performance_mode=performance_mode,
             render_profile=generation.render_profile,
+            detroit_soul=generation.detroit_soul,
         )
         pattern.analysis = analyze_pattern(pattern, include_render=False)
         variants[variant] = pattern

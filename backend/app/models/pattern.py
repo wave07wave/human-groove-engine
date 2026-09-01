@@ -10,7 +10,7 @@ from app.config import (
 
 from .analysis import GrooveAnalysis
 from .event import GrooveEvent, InstrumentID
-from .groove import GrooveIntent
+from .groove import DetroitSoulSettings, GrooveIntent
 from .meter import MeterDefinition
 
 
@@ -25,6 +25,7 @@ class PatternMetadata(BaseModel):
     performance_model: str = "rule-pocket-v1"
     performance_model_version: str = "1.0.0"
     render_profile: str = "studio-tight-v1"
+    detroit_soul: DetroitSoulSettings = Field(default_factory=DetroitSoulSettings)
     preference_guided: bool = False
     preference_guidance_strength: float = Field(0, ge=0, le=0.35)
     preference_guided_features: list[str] = Field(default_factory=list)

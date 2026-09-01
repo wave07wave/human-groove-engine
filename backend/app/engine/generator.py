@@ -4,11 +4,12 @@ import math
 
 from app.config import DRUM_PITCHES, MAX_MICROTIMING_US, PPQ
 from app.models.event import DurationStyle, EventRole, GrooveEvent, InstrumentID
-from app.models.groove import GrooveIntent
+from app.models.groove import DetroitSoulSettings, GrooveIntent
 from app.models.meter import MeterDefinition
 from app.models.pattern import GroovePattern, PatternMetadata
 from app.random.seeds import HierarchicalRNG
 
+from .detroit_soul import apply_detroit_soul_style
 from .embodied_operators import apply_embodied_operators
 from .performance import PerformanceModel, load_performance_model, performance_adjustment
 from .phrase import choose_grammar, motif_for_bar, tension_curve
@@ -150,8 +151,10 @@ def generate_pattern(
     style: str = "Balanced",
     performance_mode: str = "auto",
     render_profile: str = "studio-tight-v1",
+    detroit_soul: DetroitSoulSettings | None = None,
 ) -> GroovePattern:
     dna = intent.target_dna
+    detroit_soul = detroit_soul or DetroitSoulSettings()
     hrng = HierarchicalRNG(seed)
     performance_model = None if performance_mode == "rule" else load_performance_model()
     phrase_rng = hrng.stream("phrase", candidate)
@@ -683,6 +686,16 @@ def generate_pattern(
                         )
                     )
 
+    events = apply_detroit_soul_style(
+        events,
+        settings=detroit_soul,
+        hrng=hrng,
+        candidate=candidate,
+        bpm=bpm,
+        bars=bars,
+        meter=meter,
+        microtiming_amount=dna.microtiming,
+    )
     events.sort(key=lambda e: (e.grid_tick, e.instrument.value, e.event_id))
     pack = style_knowledge_pack(style, meter)
     pattern = GroovePattern(
@@ -703,6 +716,7 @@ def generate_pattern(
                 performance_model.model_version if performance_model is not None else "1.0.0"
             ),
             render_profile=render_profile,
+            detroit_soul=detroit_soul.model_copy(deep=True),
             knowledge_pack_id=pack.pack_id,
             knowledge_pack_version=pack.version,
             hat_language_profile=hat_style.profile_id,

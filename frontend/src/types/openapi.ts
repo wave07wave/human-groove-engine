@@ -1879,6 +1879,40 @@ export interface components {
             /** Passed */
             passed: boolean;
         };
+        /**
+         * DetroitSoulBlend
+         * @description Relative influences used when all three Detroit Soul profiles are blended.
+         */
+        DetroitSoulBlend: {
+            /**
+             * Benny
+             * @default 0.3333333333333333
+             */
+            benny: number;
+            /**
+             * Pistol
+             * @default 0.3333333333333333
+             */
+            pistol: number;
+            /**
+             * Uriel
+             * @default 0.3333333333333333
+             */
+            uriel: number;
+        };
+        /**
+         * DetroitSoulSettings
+         * @description An independent, attribution-safe performance-language layer.
+         */
+        DetroitSoulSettings: {
+            /**
+             * Mode
+             * @default standard
+             * @enum {string}
+             */
+            mode: "standard" | "benny" | "pistol" | "uriel" | "blend";
+            blend?: components["schemas"]["DetroitSoulBlend"];
+        };
         /** DiversityAudit */
         DiversityAudit: {
             /** Comparisons */
@@ -2201,6 +2235,7 @@ export interface components {
              * @enum {string}
              */
             performance_mode: "auto" | "rule";
+            detroit_soul?: components["schemas"]["DetroitSoulSettings"];
             /**
              * Render Profile
              * @default studio-tight-v1
@@ -2490,7 +2525,7 @@ export interface components {
             /** Events */
             events: components["schemas"]["GrooveEvent"][];
             intent: components["schemas"]["GrooveIntent"];
-            metadata: components["schemas"]["PatternMetadata"];
+            metadata: components["schemas"]["PatternMetadata-Input"];
             analysis?: components["schemas"]["GrooveAnalysis-Input"] | null;
             /** Instrument Locks */
             instrument_locks?: components["schemas"]["InstrumentID"][];
@@ -2514,7 +2549,7 @@ export interface components {
             /** Events */
             events: components["schemas"]["GrooveEvent"][];
             intent: components["schemas"]["GrooveIntent"];
-            metadata: components["schemas"]["PatternMetadata"];
+            metadata: components["schemas"]["PatternMetadata-Output"];
             analysis?: components["schemas"]["GrooveAnalysis-Output"] | null;
             /** Instrument Locks */
             instrument_locks?: components["schemas"]["InstrumentID"][];
@@ -2957,7 +2992,7 @@ export interface components {
          */
         MutationOperation: "rhythm_only" | "pitch_only" | "timing_only" | "articulation_only" | "duration_only" | "regenerate";
         /** PatternMetadata */
-        PatternMetadata: {
+        "PatternMetadata-Input": {
             /**
              * Engine Version
              * @default 0.11.0
@@ -3005,6 +3040,96 @@ export interface components {
              * @default studio-tight-v1
              */
             render_profile: string;
+            detroit_soul?: components["schemas"]["DetroitSoulSettings"];
+            /**
+             * Preference Guided
+             * @default false
+             */
+            preference_guided: boolean;
+            /**
+             * Preference Guidance Strength
+             * @default 0
+             */
+            preference_guidance_strength: number;
+            /** Preference Guided Features */
+            preference_guided_features?: string[];
+            /**
+             * Embodied Operator Arm
+             * @default baseline
+             */
+            embodied_operator_arm: string;
+            /**
+             * Knowledge Pack Id
+             * @default neutral-v1
+             */
+            knowledge_pack_id: string;
+            /**
+             * Knowledge Pack Version
+             * @default 1.0
+             */
+            knowledge_pack_version: string;
+            /**
+             * Hat Language Profile
+             * @default neutral-hat-v1
+             */
+            hat_language_profile: string;
+            /** Hat Variant Ids */
+            hat_variant_ids?: string[];
+            /** Drum Variant Ids */
+            drum_variant_ids?: string[];
+            /** Phrase Arrangement Ids */
+            phrase_arrangement_ids?: string[];
+        };
+        /** PatternMetadata */
+        "PatternMetadata-Output": {
+            /**
+             * Engine Version
+             * @default 0.11.0
+             */
+            engine_version: string;
+            /**
+             * Analysis Version
+             * @default 1.5
+             */
+            analysis_version: string;
+            /**
+             * Schema Version
+             * @default 1.0
+             */
+            schema_version: string;
+            /**
+             * Preset Version
+             * @default 1.1
+             */
+            preset_version: string;
+            /**
+             * Rng Algorithm
+             * @default PCG64DXSM/SHA-256
+             */
+            rng_algorithm: string;
+            /** Master Seed */
+            master_seed: number;
+            /**
+             * Style
+             * @default Balanced
+             */
+            style: string;
+            /**
+             * Performance Model
+             * @default rule-pocket-v1
+             */
+            performance_model: string;
+            /**
+             * Performance Model Version
+             * @default 1.0.0
+             */
+            performance_model_version: string;
+            /**
+             * Render Profile
+             * @default studio-tight-v1
+             */
+            render_profile: string;
+            detroit_soul?: components["schemas"]["DetroitSoulSettings"];
             /**
              * Preference Guided
              * @default false

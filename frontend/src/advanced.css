@@ -23,6 +23,60 @@
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.detroit-soul-control {
+  display: grid;
+  grid-template-columns: minmax(210px, .72fr) minmax(320px, 1.28fr);
+  gap: 10px 22px;
+  align-items: end;
+  margin-top: 13px;
+  padding: 13px;
+  border: 1px solid #4b4032;
+  background: #171512;
+}
+
+.detroit-soul-control>div:first-child label {
+  font: 500 9px DM Mono;
+  letter-spacing: .13em;
+  color: var(--muted);
+}
+
+.detroit-soul-control p {
+  margin: 7px 0 0;
+  color: var(--ink);
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+.detroit-soul-control>small {
+  grid-column: 1/-1;
+  color: #716a61;
+  font-size: 8px;
+  line-height: 1.5;
+}
+
+.detroit-blend {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.detroit-blend label {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.detroit-blend b {
+  color: var(--amber);
+  font: 500 9px DM Mono;
+}
+
+.detroit-blend input {
+  grid-column: 1/-1;
+}
+
 @media (max-width: 1000px) {
   .advanced-body {
     grid-template-columns: 1fr;
@@ -30,6 +84,14 @@
 
   .candidates {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .detroit-soul-control {
+    grid-template-columns: 1fr;
+  }
+
+  .detroit-soul-control>small {
+    grid-column: 1;
   }
 }
 
@@ -39,6 +101,10 @@
   }
 
   .candidates {
+    grid-template-columns: 1fr;
+  }
+
+  .detroit-blend {
     grid-template-columns: 1fr;
   }
 }

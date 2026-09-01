@@ -1,8 +1,34 @@
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class UnitModel(BaseModel):
     model_config = ConfigDict(validate_assignment=True)
+
+
+DetroitSoulMode = Literal["standard", "benny", "pistol", "uriel", "blend"]
+
+
+class DetroitSoulBlend(UnitModel):
+    """Relative influences used when all three Detroit Soul profiles are blended."""
+
+    benny: float = Field(1 / 3, ge=0, le=1)
+    pistol: float = Field(1 / 3, ge=0, le=1)
+    uriel: float = Field(1 / 3, ge=0, le=1)
+
+    @model_validator(mode="after")
+    def at_least_one_influence(self) -> "DetroitSoulBlend":
+        if self.benny + self.pistol + self.uriel <= 0:
+            raise ValueError("at least one Detroit Soul blend influence must be greater than zero")
+        return self
+
+
+class DetroitSoulSettings(BaseModel):
+    """An independent, attribution-safe performance-language layer."""
+
+    mode: DetroitSoulMode = "standard"
+    blend: DetroitSoulBlend = Field(default_factory=DetroitSoulBlend)
 
 
 class GrooveDNA(UnitModel):

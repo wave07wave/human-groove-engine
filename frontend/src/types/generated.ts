@@ -48,13 +48,19 @@ export type GrooveEvent = Omit<Schema['GrooveEvent'], 'event_id' | 'role_tags' |
   choke_group: string | null
 }
 
+export type DetroitSoulMode = 'standard' | 'benny' | 'pistol' | 'uriel' | 'blend'
+export type DetroitSoulBlend = { benny: number, pistol: number, uriel: number }
+export type DetroitSoulSettings = { mode: DetroitSoulMode, blend: DetroitSoulBlend }
+
 type PatternOutput = Schema['GroovePattern-Output']
-export type GroovePattern = Omit<PatternOutput, 'events' | 'intent' | 'analysis' | 'instrument_locks' | 'bar_locks'> & {
+export type GroovePattern = Omit<PatternOutput, 'events' | 'intent' | 'analysis' | 'instrument_locks' | 'bar_locks' | 'metadata'> & {
   events: GrooveEvent[]
   intent: GrooveIntent
   analysis: GrooveAnalysis | null
   instrument_locks: Instrument[]
   bar_locks: number[]
+  /** Optional only while reading patterns saved before Detroit Soul styles existed. */
+  metadata: PatternOutput['metadata'] & { detroit_soul?: DetroitSoulSettings }
 }
 
 export type GenerateRequest = Omit<Schema['GenerateRequest'], 'meter' | 'intent' | 'render_profile' | 'candidate_strategy'> & {
@@ -64,6 +70,7 @@ export type GenerateRequest = Omit<Schema['GenerateRequest'], 'meter' | 'intent'
   /** The API defaults to quality; Easy mode opts into controlled exploration. */
   candidate_strategy?: 'quality' | 'explore'
   anonymous_session_id?: string
+  detroit_soul?: DetroitSoulSettings
 }
 export type GroovePreferenceSummary = Schema['GroovePreferenceSummary']
 export type TapAnalysis = Omit<Schema['TapAnalysis'], 'suggested_intent'> & {
