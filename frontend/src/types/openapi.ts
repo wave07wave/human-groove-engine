@@ -1058,6 +1058,7 @@ export interface components {
             /** @default monophonic_retrigger */
             voice_policy: components["schemas"]["BassVoicePolicy"];
             groove_context?: components["schemas"]["GrooveContext-Input"] | null;
+            motown_bass?: components["schemas"]["MotownBassSettings"];
         };
         /** BassGenerateResponse */
         BassGenerateResponse: {
@@ -1429,6 +1430,7 @@ export interface components {
              * @default 0
              */
             revision: number;
+            motown_bass?: components["schemas"]["MotownBassSettings"];
             /** Resolved Intent Notes */
             resolved_intent_notes?: string[];
             /**
@@ -2972,6 +2974,18 @@ export interface components {
              * @default Optional comfortable-tap estimate; it does not replace your chosen BPM.
              */
             caveat: string;
+        };
+        /**
+         * MotownBassSettings
+         * @description Optional historical-performance-language layer for generated bass parts.
+         */
+        MotownBassSettings: {
+            /**
+             * Mode
+             * @default standard
+             * @enum {string}
+             */
+            mode: "standard" | "jamerson";
         };
         /** MutateRequest */
         MutateRequest: {

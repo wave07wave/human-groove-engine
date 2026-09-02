@@ -69,7 +69,8 @@ def export_bass_midi(pattern: BassPattern, channel: int = 0) -> bytes:
                     f"engine={pattern.metadata.engine_version};"
                     f"schema={pattern.metadata.schema_version};"
                     f"seed={pattern.metadata.master_seed};"
-                    f"rng={pattern.metadata.rng_algorithm}"
+                    f"rng={pattern.metadata.rng_algorithm};"
+                    f"motown_bass={pattern.metadata.motown_bass.mode}"
                 ),
             ),
         ),

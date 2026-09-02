@@ -20,6 +20,15 @@ class UnitModel(BaseModel):
     model_config = ConfigDict(validate_assignment=True)
 
 
+MotownBassMode = Literal["standard", "jamerson"]
+
+
+class MotownBassSettings(UnitModel):
+    """Optional historical-performance-language layer for generated bass parts."""
+
+    mode: MotownBassMode = "standard"
+
+
 class SpelledPitchClass(UnitModel):
     letter: str = Field(pattern=r"^[A-G]$")
     accidental: int = Field(default=0, ge=-2, le=2)
@@ -408,6 +417,7 @@ class BassPatternMetadata(UnitModel):
     preset: str = Field("Supportive", min_length=1, max_length=80)
     candidate_index: int = 0
     revision: int = 0
+    motown_bass: MotownBassSettings = Field(default_factory=MotownBassSettings)
     resolved_intent_notes: list[str] = Field(default_factory=list)
     preference_guided: bool = False
     preference_guidance_strength: float = Field(0, ge=0, le=0.35)
@@ -543,6 +553,7 @@ class BassGenerateRequest(UnitModel):
     register_limits: RegisterLimits = Field(default_factory=RegisterLimits)
     voice_policy: BassVoicePolicy = BassVoicePolicy.MONOPHONIC_RETRIGGER
     groove_context: GrooveContext | None = None
+    motown_bass: MotownBassSettings = Field(default_factory=MotownBassSettings)
 
     @field_validator("preset", mode="before")
     @classmethod

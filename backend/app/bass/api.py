@@ -243,6 +243,8 @@ def capabilities() -> dict:
         "shared_complexity_budget": True,
         "midi_export": True,
         "midi_channel_configurable": True,
+        "motown_bass_styles": ["standard", "jamerson"],
+        "jamerson_inspired_generation": True,
         "pattern_library": True,
         "versioned_json_exchange": True,
         "history_api": True,

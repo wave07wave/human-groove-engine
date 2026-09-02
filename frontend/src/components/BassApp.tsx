@@ -2,8 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { bassApi } from '../api/client'
 import type { BassPreviewMode } from '../audio/bassPreview'
 import { useHistory } from '../hooks/useHistory'
-import type { BassEvent, BassGenerateRequest, BassGenerationRecord, BassIntent, BassIntentDNA, BassMutationOperation, BassPattern, BassPatternExchange, BassPreferenceSummary, BassPreserveOptions, BassPresetsResponse, BassVoicePolicy, GrooveContext, GroovePattern, IntegrationMode, JointGenerationResult } from '../types/generated'
+import type { BassEvent, BassGenerateRequest, BassGenerationRecord, BassIntent, BassIntentDNA, BassMutationOperation, BassPattern, BassPatternExchange, BassPreferenceSummary, BassPreserveOptions, BassPresetsResponse, BassVoicePolicy, GrooveContext, GroovePattern, IntegrationMode, JointGenerationResult, MotownBassSettings } from '../types/generated'
 import { METERS, METER_OPTIONS } from '../utils/meters'
+import { DEFAULT_MOTOWN_BASS } from '../utils/motownBass'
 import { replaceCandidateRevision } from '../utils/candidates'
 import { EMPTY_PRESERVE_OPTIONS } from '../utils/preserveOptions'
 import { BassPianoRoll } from './BassPianoRoll'
@@ -11,6 +12,7 @@ import { BassTasteTrainer } from './BassTasteTrainer'
 import { HarmonyEditor } from './HarmonyEditor'
 import { IntentLocks } from './IntentLocks'
 import { Knob } from './Knob'
+import { MotownBassControl } from './MotownBassControl'
 import { PreserveOptions } from './PreserveOptions'
 import './bass.css'
 import './groove-link.css'
@@ -40,6 +42,7 @@ export function BassApp({ groovePattern, externalPattern, onGrooveUpdate, onBass
   const [preset, setPreset] = useState('Supportive')
   const [bpm, setBpm] = useState(100); const [bars, setBars] = useState(8); const [meter, setMeter] = useState('4/4'); const [seed, setSeed] = useState(42); const [voicePolicy, setVoicePolicy] = useState<BassVoicePolicy>('monophonic_retrigger'); const [midiChannel, setMidiChannel] = useState(0)
   const [inputMode, setInputMode] = useState<BassGenerateRequest['input_mode']>('chord_progression')
+  const [motownBass, setMotownBass] = useState<MotownBassSettings>(DEFAULT_MOTOWN_BASS)
   const [harmony, setHarmony] = useState('Dm7 | G7 | Cmaj7 | A7'); const [keyName, setKeyName] = useState('C'); const [scaleMode, setScaleMode] = useState<BassGenerateRequest['mode']>('major')
   const [candidates, setCandidates] = useState<BassPattern[]>([]); const history = useHistory<BassPattern>(null)
   const replaceHistory = history.replace
@@ -56,6 +59,7 @@ export function BassApp({ groovePattern, externalPattern, onGrooveUpdate, onBass
   const pattern = history.present
   const commitHistory = history.commit
   const latestExternalPattern = useRef<BassPattern | null | undefined>(externalPattern)
+  const motownPatternId = useRef<string | null>(null)
 
   useEffect(() => { if (pattern) onBassPatternChange?.(pattern) }, [onBassPatternChange, pattern])
   useEffect(() => { bassApi.presets().then(data => { setPresets(data); if (!latestExternalPattern.current) setIntent(structuredClone(data.built_in.Supportive)) }).catch(() => setError('Bass APIに接続できません。Backendを起動してください。')) }, [])
@@ -76,6 +80,7 @@ export function BassApp({ groovePattern, externalPattern, onGrooveUpdate, onBass
     setJointResults([])
     setIntent(structuredClone(externalPattern.intent))
     setPreset(externalPattern.metadata.preset)
+    setMotownBass(structuredClone(externalPattern.metadata.motown_bass ?? DEFAULT_MOTOWN_BASS))
     setHarmony(harmonyText(externalPattern))
     setBpm(externalPattern.bpm)
     setBars(externalPattern.bars)
@@ -99,6 +104,11 @@ export function BassApp({ groovePattern, externalPattern, onGrooveUpdate, onBass
   }, [externalPattern, commitHistory, pattern?.pattern_id])
   useEffect(() => {
     setSelected(current => current && pattern ? pattern.events.find(event => event.event_id === current.event_id) ?? null : null)
+  }, [pattern])
+  useEffect(() => {
+    if (!pattern || motownPatternId.current === pattern.pattern_id) return
+    motownPatternId.current = pattern.pattern_id
+    setMotownBass(structuredClone(pattern.metadata.motown_bass ?? DEFAULT_MOTOWN_BASS))
   }, [pattern])
   useEffect(() => {
     if (!pattern) { setEvaluationStatus(''); return }
@@ -127,7 +137,7 @@ export function BassApp({ groovePattern, externalPattern, onGrooveUpdate, onBass
     setSeed(nextSeed)
     const joint = integrationMode !== 'follow'
     if (joint && !groovePattern) throw new Error('NEGOTIATE / CO-CREATEにはGroove候補が必要です。')
-    const request: BassGenerateRequest = { bpm: joint ? groovePattern!.bpm : bpm, bars: joint ? groovePattern!.bars : bars, meter: joint ? groovePattern!.meter : METERS[meter], input_mode: inputMode, harmony, key: keyName || null, mode: scaleMode, intent, preset, seed: nextSeed, candidate_count: 4, register_limits: { lowest_midi_note: registerLow, highest_midi_note: registerHigh, preferred_center: registerCenter, preferred_zone: 'core', max_single_leap: maxLeap }, voice_policy: voicePolicy, groove_context: grooveContext }
+    const request: BassGenerateRequest = { bpm: joint ? groovePattern!.bpm : bpm, bars: joint ? groovePattern!.bars : bars, meter: joint ? groovePattern!.meter : METERS[meter], input_mode: inputMode, harmony, key: keyName || null, mode: scaleMode, intent, preset, seed: nextSeed, candidate_count: 4, register_limits: { lowest_midi_note: registerLow, highest_midi_note: registerHigh, preferred_center: registerCenter, preferred_zone: 'core', max_single_leap: maxLeap }, voice_policy: voicePolicy, groove_context: grooveContext, motown_bass: motownBass }
     if (joint) {
       const response = await bassApi.jointGenerate(groovePattern!, request, integrationMode, complexityBudget, bassShare)
       const bassCandidates = response.candidates.map(candidate => candidate.bass_pattern)
@@ -152,7 +162,7 @@ export function BassApp({ groovePattern, externalPattern, onGrooveUpdate, onBass
   const selectedJoint = useMemo(() => jointResults.find(result => result.bass_pattern.pattern_id === pattern?.pattern_id), [jointResults, pattern?.pattern_id])
   const savePreset = async () => { const name = presetName.trim(); if (!intent || !name) return; setBusy(true); try { await bassApi.savePreset(name, intent); const next = await bassApi.presets(); setPresets(next); setPreset(name); setPresetName(''); setPersistenceNotice(`PRESET SAVED · ${name}`) } catch (cause) { setError(String(cause)) } finally { setBusy(false) } }
   const saveCurrentPattern = async () => { if (!pattern) return; setBusy(true); try { await bassApi.savePattern(pattern); const next = await bassApi.patterns(); setSavedPatterns(next); setSavedPatternId(pattern.pattern_id); setPersistenceNotice(`PATTERN SAVED · ${pattern.name}`) } catch (cause) { setError(String(cause)) } finally { setBusy(false) } }
-  const applyPattern = (next: BassPattern) => { history.commit(next); setEvaluationStatus(''); setCandidates([next]); setJointResults([]); setIntent(structuredClone(next.intent)); setPreset(next.metadata.preset); setHarmony(harmonyText(next)); setBpm(next.bpm); setBars(next.bars); setVoicePolicy(next.voice_policy); setInputMode(next.input_mode); setGrooveContext(next.groove_context ?? null); const meterName = `${next.meter.numerator}/${next.meter.denominator}`; if (METERS[meterName]) setMeter(meterName); if (next.key_context) { setKeyName(pitchClassText(next.key_context.tonic)); setScaleMode(next.key_context.mode) } else { setKeyName('') }; setRegisterLow(next.register_limits.lowest_midi_note); setRegisterHigh(next.register_limits.highest_midi_note); setRegisterCenter(next.register_limits.preferred_center); setMaxLeap(next.register_limits.max_single_leap); setSelected(null); setSelectedBars(new Set()) }
+  const applyPattern = (next: BassPattern) => { history.commit(next); setEvaluationStatus(''); setCandidates([next]); setJointResults([]); setIntent(structuredClone(next.intent)); setPreset(next.metadata.preset); setMotownBass(structuredClone(next.metadata.motown_bass ?? DEFAULT_MOTOWN_BASS)); setHarmony(harmonyText(next)); setBpm(next.bpm); setBars(next.bars); setVoicePolicy(next.voice_policy); setInputMode(next.input_mode); setGrooveContext(next.groove_context ?? null); const meterName = `${next.meter.numerator}/${next.meter.denominator}`; if (METERS[meterName]) setMeter(meterName); if (next.key_context) { setKeyName(pitchClassText(next.key_context.tonic)); setScaleMode(next.key_context.mode) } else { setKeyName('') }; setRegisterLow(next.register_limits.lowest_midi_note); setRegisterHigh(next.register_limits.highest_midi_note); setRegisterCenter(next.register_limits.preferred_center); setMaxLeap(next.register_limits.max_single_leap); setSelected(null); setSelectedBars(new Set()) }
   const loadSavedPattern = () => { const found = savedPatterns.find(item => item.pattern_id === savedPatternId); if (found) { applyPattern(found); setPersistenceNotice(`PATTERN LOADED · ${found.name}`) } }
   const deleteSavedPattern = async () => { if (!savedPatternId) return; setBusy(true); try { await bassApi.deletePattern(savedPatternId); setSavedPatterns(items => items.filter(item => item.pattern_id !== savedPatternId)); setSavedPatternId(''); setPersistenceNotice('PATTERN DELETED') } catch (cause) { setError(String(cause)) } finally { setBusy(false) } }
   const loadGeneration = async () => { if (!generationId) return; setBusy(true); try { const loaded = await bassApi.generationPattern(Number(generationId)); applyPattern(loaded); setPersistenceNotice(`HISTORY LOADED · ${loaded.name}`) } catch (cause) { setError(String(cause)) } finally { setBusy(false) } }
@@ -166,6 +176,7 @@ export function BassApp({ groovePattern, externalPattern, onGrooveUpdate, onBass
         <div className="harmony-control"><label>INPUT MODE<select value={inputMode} onChange={e => setInputMode(e.target.value as BassGenerateRequest['input_mode'])}><option value="chord_progression">Chord progression</option><option value="key_mode">Key / Mode</option><option value="root_guide">Root guide</option><option value="no_harmony">No harmony</option></select></label><label className="harmony-input">HARMONY / ROOT GUIDE<input value={harmony} onChange={e => setHarmony(e.target.value)} placeholder="Dm7 | G7 | Cmaj7 | A7" /></label><label>KEY<input value={keyName} onChange={e => setKeyName(e.target.value)} /></label><label>MODE<select value={scaleMode} onChange={e => setScaleMode(e.target.value as BassGenerateRequest['mode'])}>{modeOptions.map(mode => <option key={mode}>{mode.replaceAll('_', ' ')}</option>)}</select></label></div>
         {inputMode === 'chord_progression' && <HarmonyEditor value={harmony} bars={bars} onChange={setHarmony} />}
         <div className="transport-settings bass-transport"><label>BPM<input type="number" min="30" max="300" value={bpm} onChange={e => setBpm(Number(e.target.value))} /></label><label>BARS<select value={bars} onChange={e => setBars(Number(e.target.value))}>{[1, 2, 4, 8, 16, 32, 64].map(value => <option key={value}>{value}</option>)}</select></label><label>METER<select value={meter} onChange={e => setMeter(e.target.value)}>{METER_OPTIONS.map(value => <option key={value}>{value}</option>)}</select></label><label>SEED<input type="number" min="0" value={seed} onChange={e => setSeed(Number(e.target.value))} /></label><label>BEHAVIOUR<select value={preset} onChange={e => choosePreset(e.target.value)}>{[...new Set([...Object.keys(presets?.built_in ?? { Supportive: 1 }), ...Object.keys(presets?.user ?? {})])].map(name => <option key={name}>{name}</option>)}</select></label><label>VOICE POLICY<select value={voicePolicy} onChange={e => setVoicePolicy(e.target.value as BassVoicePolicy)}><option value="monophonic_retrigger">Monophonic retrigger</option><option value="monophonic_legato">Monophonic legato</option><option value="allow_overlap">Allow overlap</option></select></label><label>MIDI CHANNEL<input type="number" min="1" max="16" value={midiChannel + 1} onChange={e => setMidiChannel(Math.max(0, Math.min(15, Number(e.target.value) - 1)))} /></label></div>
+        <MotownBassControl value={motownBass} onChange={setMotownBass} />
         <div className="register-preset-controls"><fieldset><legend>REGISTER POLICY</legend><label>LOW<input aria-label="REGISTER LOW" type="number" min="0" max={registerHigh - 1} value={registerLow} onChange={e => { const value = Number(e.target.value); setRegisterLow(value); if (registerCenter < value) setRegisterCenter(value) }} /></label><label>CENTER<input aria-label="REGISTER CENTER" type="number" min={registerLow} max={registerHigh} value={registerCenter} onChange={e => setRegisterCenter(Number(e.target.value))} /></label><label>HIGH<input aria-label="REGISTER HIGH" type="number" min={registerLow + 1} max="127" value={registerHigh} onChange={e => { const value = Number(e.target.value); setRegisterHigh(value); if (registerCenter > value) setRegisterCenter(value) }} /></label><label>MAX LEAP<input aria-label="MAX LEAP" type="number" min="1" max="36" value={maxLeap} onChange={e => setMaxLeap(Number(e.target.value))} /></label></fieldset><div className="preset-save"><label>SAVE CURRENT INTENT<input aria-label="PRESET NAME" value={presetName} maxLength={80} onChange={e => setPresetName(e.target.value)} placeholder="My pocket" /></label><button className="secondary" disabled={!intent || !presetName.trim() || busy} onClick={savePreset}>SAVE PRESET</button></div></div>
         {intent && <><div className="knob-row bass-knobs">{macroControls.map(([label, key]) => <Knob key={key} label={label} value={intent.target[key]} onChange={value => setDNA(key, value)} />)}</div><label className="chromatic-switch"><input type="checkbox" checked={intent.allow_chromatic_notes} onChange={e => setIntent({ ...intent, allow_chromatic_notes: e.target.checked })} /> ALLOW CHROMATIC NOTES</label></>}
         <div className="groove-link"><button className={grooveContext ? 'secondary linked' : 'secondary'} disabled={!groovePattern || busy} onClick={useGroove}>{grooveContext ? '✓ GROOVE CONTEXT LINKED' : 'LINK CURRENT GROOVE'}</button><span>{groovePattern ? `${groovePattern.name} · ${groovePattern.events.filter(event => event.instrument === 'kick').length} kicks` : 'Generate or select a Groove candidate first'}</span><label>MODE<select value={integrationMode} onChange={e => setIntegrationMode(e.target.value as IntegrationMode)}><option value="follow">FOLLOW · Drums fixed</option><option value="negotiate">NEGOTIATE · Small Kick repair</option><option value="co_create">CO-CREATE · Joint Kick + Bass</option></select></label><label>COMPLEXITY<input type="range" min="0" max="1" step=".01" value={complexityBudget} onChange={e => setComplexityBudget(Number(e.target.value))} /><b>{Math.round(complexityBudget * 100)}</b></label><label>BASS SHARE<input type="range" min="0" max="1" step=".01" value={bassShare} onChange={e => setBassShare(Number(e.target.value))} /><b>{Math.round(bassShare * 100)}</b></label></div>

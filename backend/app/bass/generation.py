@@ -42,6 +42,7 @@ from .models import (
     TempoMap,
     TempoSegment,
 )
+from .motown import apply_jamerson_intent, apply_jamerson_performance
 from .preference import blended_candidate_score
 
 BASS_PREFERENCE_TARGETS = {
@@ -502,6 +503,10 @@ def generate_bass_pattern(request: BassGenerateRequest, candidate: int = 0) -> B
     if request.groove_context and request.groove_context.meter != request.meter:
         raise ValueError("GrooveContext meter must match bass request meter")
     resolved, resolution_notes = resolve_intent(request.intent)
+    resolved, jamerson_profile, style_notes = apply_jamerson_intent(
+        resolved, request.motown_bass, request.bpm
+    )
+    resolution_notes.extend(style_notes)
     timeline, context = build_harmony_timeline(
         harmony=request.harmony,
         bars=request.bars,
@@ -523,6 +528,19 @@ def generate_bass_pattern(request: BassGenerateRequest, candidate: int = 0) -> B
         request.preset,
     )
     events = _render_events(skeleton, request, resolved, hrng, candidate)
+    events = apply_jamerson_performance(
+        events,
+        settings=request.motown_bass,
+        profile=jamerson_profile,
+        bpm=request.bpm,
+        bars=request.bars,
+        bar_ticks=request.meter.bar_ticks,
+        timeline=timeline,
+        limits=request.register_limits,
+        voice_policy=request.voice_policy,
+        hrng=hrng,
+        candidate=candidate,
+    )
     pattern = BassPattern(
         pattern_id=f"bass-{request.seed}-{candidate}",
         name=f"{request.preset} Bass {candidate + 1}",
@@ -542,6 +560,7 @@ def generate_bass_pattern(request: BassGenerateRequest, candidate: int = 0) -> B
             master_seed=request.seed,
             preset=request.preset,
             candidate_index=candidate,
+            motown_bass=request.motown_bass.model_copy(deep=True),
             resolved_intent_notes=resolution_notes,
         ),
         groove_context=request.groove_context,

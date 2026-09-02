@@ -100,6 +100,8 @@ export type PresetsResponse = Omit<Schema['PresetsResponse'], 'built_in' | 'user
 }
 
 export type BassIntentDNA = Schema['BassIntentDNA']
+export type MotownBassMode = 'standard' | 'jamerson'
+export type MotownBassSettings = { mode: MotownBassMode }
 export type BassIntent = Omit<Schema['BassIntent'], 'target' | 'tolerances' | 'priorities'> & {
   target: BassIntentDNA
   tolerances: Schema['BassTolerance']
@@ -111,18 +113,22 @@ export type BassEvent = Omit<Schema['BassEvent-Output'], 'articulation' | 'locks
   provenance: Schema['EventProvenance']
 }
 export type BassAnalysis = Schema['BassAnalysis-Output']
-export type BassPattern = Omit<Schema['BassPattern-Output'], 'events' | 'intent' | 'analysis' | 'intent_locks' | 'structural_events' | 'register_limits'> & {
+type BassPatternOutput = Schema['BassPattern-Output']
+export type BassPattern = Omit<BassPatternOutput, 'events' | 'intent' | 'analysis' | 'intent_locks' | 'structural_events' | 'register_limits' | 'metadata'> & {
   events: BassEvent[]
   intent: BassIntent
   analysis: BassAnalysis | null
   intent_locks: Schema['BassIntentLocks']
   structural_events: Schema['BassStructuralEvent'][]
   register_limits: Schema['RegisterLimits']
+  /** Optional only while reading Bass patterns saved before Motown styles existed. */
+  metadata: BassPatternOutput['metadata'] & { motown_bass?: MotownBassSettings }
 }
-export type BassGenerateRequest = Omit<Schema['BassGenerateRequest'], 'meter' | 'intent' | 'register_limits'> & {
+export type BassGenerateRequest = Omit<Schema['BassGenerateRequest'], 'meter' | 'intent' | 'register_limits' | 'motown_bass'> & {
   meter: MeterDefinition
   intent: BassIntent
   register_limits: Schema['RegisterLimits']
+  motown_bass?: MotownBassSettings
 }
 export type BassMutationOperation = Schema['MutationOperation']
 export type BassVoicePolicy = Schema['BassVoicePolicy']

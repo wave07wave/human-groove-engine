@@ -82,6 +82,43 @@ it('marks a candidate created by preference-guided search', async () => {
   expect(await screen.findByText('好み探索 · 0 notes')).toBeTruthy()
 })
 
+it('sends the selected Jamerson-inspired style from the detailed Bass screen', async () => {
+  const generated = bassPattern('jamerson-generated')
+  generated.metadata = {
+    ...generated.metadata,
+    preset: 'Supportive',
+    motown_bass: { mode: 'jamerson' },
+  }
+  let generateBody: Record<string, unknown> | null = null
+  vi.stubGlobal('fetch', vi.fn((input: string | URL | Request, init?: RequestInit) => {
+    const url = String(input)
+    if (url === '/api/v1/bass/generate') {
+      generateBody = JSON.parse(String(init?.body)) as Record<string, unknown>
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ candidates: [generated] }) })
+    }
+    if (url === '/api/v1/bass/evaluate') {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(generated) })
+    }
+    if (url.includes('/history/generations') || url.endsWith('/patterns')) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve([]) })
+    }
+    if (url.includes('/preferences')) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(null) })
+    }
+    return Promise.resolve({ ok: true, json: () => Promise.resolve({ built_in: { Supportive: intent }, user: {} }) })
+  }))
+
+  render(<BassApp groovePattern={null} />)
+  const bassist = await screen.findByLabelText('Motown ベーススタイル') as HTMLSelectElement
+  fireEvent.change(bassist, { target: { value: 'jamerson' } })
+  expect(screen.getByText(/クロマチックな接近/)).toBeTruthy()
+  expect(screen.getByText(/本人の演奏の完全な再現/)).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: 'GENERATE BASS' }))
+
+  await waitFor(() => expect(generateBody).not.toBeNull())
+  expect(generateBody).toMatchObject({ motown_bass: { mode: 'jamerson' } })
+})
+
 it('applies the matching Groove when a Joint Candidate is selected', async () => {
   const firstGroove = { ...groove, pattern_id: 'joint-groove-a' }
   const secondGroove = { ...groove, pattern_id: 'joint-groove-b' }
@@ -118,7 +155,11 @@ it('keeps an externally supplied Bass pattern instead of clearing the shared sel
   external.bpm = 124
   external.bars = 2
   external.voice_policy = 'allow_overlap'
-  external.metadata = { ...external.metadata, preset: 'Supportive' }
+  external.metadata = {
+    ...external.metadata,
+    preset: 'Supportive',
+    motown_bass: { mode: 'jamerson' },
+  }
   const onBassPatternChange = vi.fn()
   vi.stubGlobal('fetch', vi.fn((input: string | URL | Request) => {
     const url = String(input)
@@ -147,4 +188,5 @@ it('keeps an externally supplied Bass pattern instead of clearing the shared sel
   expect((screen.getByLabelText('BPM') as HTMLInputElement).value).toBe('124')
   expect((screen.getByLabelText('BARS') as HTMLSelectElement).value).toBe('2')
   expect((screen.getByLabelText('VOICE POLICY') as HTMLSelectElement).value).toBe('allow_overlap')
+  expect((screen.getByLabelText('Motown ベーススタイル') as HTMLSelectElement).value).toBe('jamerson')
 })

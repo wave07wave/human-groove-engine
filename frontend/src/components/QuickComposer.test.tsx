@@ -50,7 +50,7 @@ it('offers every Detroit Soul drummer choice and sends the selected profile', as
   ])
   fireEvent.change(drummer, { target: { value: 'uriel' } })
   expect(screen.getByText(/広い間、ゴーストノート、強い一打/)).toBeTruthy()
-  expect(screen.getByText(/本人の演奏の完全な再現/)).toBeTruthy()
+  expect(screen.getAllByText(/本人の演奏の完全な再現/)).toHaveLength(2)
   fireEvent.click(screen.getByRole('button', { name: 'まとめて作成' }))
 
   await waitFor(() => expect(mocks.generate).toHaveBeenCalledTimes(1))
@@ -73,6 +73,36 @@ it('keeps an existing detailed blend when returning to easy mode', async () => {
 
   await waitFor(() => expect(mocks.generate).toHaveBeenCalledTimes(1))
   expect(mocks.generate.mock.calls[0][0].detroit_soul).toEqual({ mode: 'blend', blend })
+})
+
+it('offers Jamerson-inspired Bass in easy mode and sends the selected style', async () => {
+  render(<QuickComposer groove={null} bass={null} onReady={vi.fn()} onOpenDetails={vi.fn()} />)
+  const bassist = await screen.findByLabelText('Motown ベーススタイル') as HTMLSelectElement
+
+  expect(Array.from(bassist.options).map(option => option.value)).toEqual([
+    'standard', 'jamerson',
+  ])
+  fireEvent.change(bassist, { target: { value: 'jamerson' } })
+  expect(screen.getByText(/歌うような動きと前へ進むシンコペーション/)).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: 'まとめて作成' }))
+
+  await waitFor(() => expect(mocks.jointGenerate).toHaveBeenCalledTimes(1))
+  expect(mocks.jointGenerate.mock.calls[0][1].motown_bass).toEqual({ mode: 'jamerson' })
+})
+
+it('restores the Motown Bass style when returning to easy mode', async () => {
+  const existing = {
+    pattern_id: 'existing-jamerson-bass',
+    metadata: { motown_bass: { mode: 'jamerson' } },
+  } as BassPattern
+  render(<QuickComposer groove={null} bass={existing} onReady={vi.fn()} onOpenDetails={vi.fn()} />)
+
+  expect((await screen.findByLabelText('Motown ベーススタイル') as HTMLSelectElement).value)
+    .toBe('jamerson')
+  fireEvent.click(screen.getByRole('button', { name: 'まとめて作成' }))
+
+  await waitFor(() => expect(mocks.jointGenerate).toHaveBeenCalledTimes(1))
+  expect(mocks.jointGenerate.mock.calls[0][1].motown_bass).toEqual({ mode: 'jamerson' })
 })
 
 it('forwards a selected genre style and its preset intent', async () => {

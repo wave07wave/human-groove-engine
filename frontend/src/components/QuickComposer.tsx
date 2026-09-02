@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { api, bassApi } from '../api/client'
-import type { BassGenerateRequest, BassPresetsResponse, BassPattern, DetroitSoulMode, DetroitSoulSettings, GroovePattern, PresetsResponse } from '../types/generated'
+import type { BassGenerateRequest, BassPresetsResponse, BassPattern, DetroitSoulMode, DetroitSoulSettings, GroovePattern, MotownBassMode, MotownBassSettings, PresetsResponse } from '../types/generated'
 import { METERS } from '../utils/meters'
 import { DRUM_SOUND_OPTIONS, type DrumSoundId } from '../audio/drumKitProfile'
 import { DEFAULT_DETROIT_SOUL, DETROIT_SOUL_DISCLAIMER, DETROIT_SOUL_OPTIONS } from '../utils/detroitSoul'
+import { DEFAULT_MOTOWN_BASS, MOTOWN_BASS_DISCLAIMER, MOTOWN_BASS_OPTIONS } from '../utils/motownBass'
 
 type PatternWidth = 'focused' | 'wide' | 'adventurous'
 
@@ -63,6 +64,9 @@ export function QuickComposer({ groove, bass, onReady, onOpenDetails }: Props) {
   const [detroitSoul, setDetroitSoul] = useState<DetroitSoulSettings>(() =>
     structuredClone(groove?.metadata.detroit_soul ?? DEFAULT_DETROIT_SOUL),
   )
+  const [motownBass, setMotownBass] = useState<MotownBassSettings>(() =>
+    structuredClone(bass?.metadata.motown_bass ?? DEFAULT_MOTOWN_BASS),
+  )
   const [seed, setSeed] = useState(42)
   const [busy, setBusy] = useState(false)
   const [playing, setPlaying] = useState(false)
@@ -72,6 +76,9 @@ export function QuickComposer({ groove, bass, onReady, onOpenDetails }: Props) {
     api.presets().then(setGroovePresets).catch(cause => setError(String(cause)))
     bassApi.presets().then(setBassPresets).catch(cause => setError(String(cause)))
   }, [])
+  useEffect(() => {
+    if (bass) setMotownBass(structuredClone(bass.metadata.motown_bass ?? DEFAULT_MOTOWN_BASS))
+  }, [bass])
 
   const generateSong = async () => {
     const baseGrooveIntent = groovePresets?.built_in[style] ?? groovePresets?.built_in.Balanced
@@ -96,7 +103,7 @@ export function QuickComposer({ groove, bass, onReady, onOpenDetails }: Props) {
         harmony: 'Dm7 | G7 | Cmaj7 | A7', key: 'C', mode: 'major', intent: bassIntent,
         preset: bassRole, seed: nextSeed, candidate_count: 1,
         register_limits: { lowest_midi_note: 28, highest_midi_note: 60, preferred_center: 42, preferred_zone: 'core', max_single_leap: 12 },
-        voice_policy: 'monophonic_retrigger', groove_context: null,
+        voice_policy: 'monophonic_retrigger', groove_context: null, motown_bass: motownBass,
       }
       const response = await bassApi.jointGenerate(
         nextGroove,
@@ -116,21 +123,25 @@ export function QuickComposer({ groove, bass, onReady, onOpenDetails }: Props) {
 
   const selectedDrummer = DETROIT_SOUL_OPTIONS.find(option => option.value === detroitSoul.mode)
     ?? DETROIT_SOUL_OPTIONS[0]
+  const selectedBassist = MOTOWN_BASS_OPTIONS.find(option => option.value === motownBass.mode)
+    ?? MOTOWN_BASS_OPTIONS[0]
 
   return <main className="quick-composer">
     <section className="quick-hero panel">
       <p className="eyebrow">かんたんモード · GROOVE + BASS</p>
       <h1>少ない設定で、すぐに一曲の土台を。</h1>
-      <p>スタイル、ドラマー、Bassの役割、テンポを選べば、GrooveとBassを一緒に組み立てます。</p>
+      <p>スタイル、ドラマー、ベース奏法、Bassの役割、テンポを選べば、GrooveとBassを一緒に組み立てます。</p>
       <div className="quick-settings">
         <label>Grooveのスタイル<select value={style} onChange={event => setStyle(event.target.value)}>{Object.keys(groovePresets?.built_in ?? { Balanced: 1 }).map(name => <option key={name}>{name}</option>)}</select></label>
         <label>Detroit Soul ドラマー<select value={detroitSoul.mode} onChange={event => setDetroitSoul(current => ({ ...current, mode: event.target.value as DetroitSoulMode }))}>{DETROIT_SOUL_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
+        <label>Motown ベーススタイル<select value={motownBass.mode} onChange={event => setMotownBass({ mode: event.target.value as MotownBassMode })}>{MOTOWN_BASS_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
         <label>Bassの役割<select value={bassRole} onChange={event => setBassRole(event.target.value)}>{Object.keys(bassPresets?.built_in ?? { Supportive: 1 }).map(name => <option key={name}>{name}</option>)}</select></label>
         <label>パターンの幅<select value={patternWidth} onChange={event => setPatternWidth(event.target.value as PatternWidth)}><option value="focused">まとまり</option><option value="wide">広め</option><option value="adventurous">大胆</option></select></label>
         <label>BPM<input type="number" min="30" max="300" value={bpm} onChange={event => setBpm(Number(event.target.value))} /></label>
         <label>長さ<select value={bars} onChange={event => setBars(Number(event.target.value))}>{[2, 4, 8, 16].map(value => <option key={value} value={value}>{value}小節</option>)}</select></label>
       </div>
-      <div className="quick-drummer-summary"><b>{selectedDrummer.label}</b><span>{selectedDrummer.description}</span><small>{DETROIT_SOUL_DISCLAIMER}</small></div>
+      <div className="quick-style-summary"><b>{selectedDrummer.label}</b><span>{selectedDrummer.description}</span><small>{DETROIT_SOUL_DISCLAIMER}</small></div>
+      <div className="quick-style-summary bass"><b>{selectedBassist.label}</b><span>{selectedBassist.description}</span><small>{MOTOWN_BASS_DISCLAIMER}</small></div>
       <div className="quick-sound" role="radiogroup" aria-label="ドラム音色"><b>ドラムの音色</b><span>再生したときのキック、スネア、ハイハットの質感を選べます。</span><div>{DRUM_SOUND_OPTIONS.map(option => <button key={option.id} type="button" role="radio" aria-checked={renderProfile === option.id} className={renderProfile === option.id ? 'active' : ''} onClick={() => setRenderProfile(option.id)}>{option.label}</button>)}</div></div>
     </section>
     <section className="quick-status panel">
