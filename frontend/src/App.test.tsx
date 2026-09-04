@@ -5,12 +5,14 @@ import App from './App'
 
 afterEach(() => vi.unstubAllGlobals())
 
-it('switches between Groove and Bass engines', () => {
+it('switches between Groove, Bass, and Keys engines', () => {
   vi.stubGlobal('fetch', vi.fn(() => new Promise(() => undefined)))
   render(<App />)
   expect(screen.getByText('少しの揺らぎが、Grooveを生む。')).toBeTruthy()
   fireEvent.click(screen.getByRole('button', { name: 'BASS' }))
   expect(screen.getByText('支え、動き、導き、解決する。')).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: 'KEYS' }))
+  expect(screen.getByText('響き、支え、応答する。')).toBeTruthy()
 })
 
 it('offers an easy workspace alongside the detailed editors', () => {

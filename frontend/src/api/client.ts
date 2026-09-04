@@ -1,4 +1,4 @@
-import type { BassGenerateRequest, BassGenerateResponse, BassGenerationRecord, BassMutationOperation, BassPattern, BassPatternExchange, BassPreferenceRecord, BassPreferenceSummary, BassPreserveOptions, BassPresetsResponse, BlindResponseResult, BlindSession, EmbodiedEvaluationResult, EmbodiedEvaluationSummary, EvaluationSummary, GenerateRequest, GenerateResponse, GrooveContext, GrooveIntent, GroovePattern, GroovePreferenceSummary, Instrument, IntegrationMode, IntentTransformResponse, JointGenerateResponse, MidiReferenceAnalysis, MotorTempoProfile, ParticipantGroup, PresetsResponse, QualityAuditReport, TapAnalysis } from '../types/generated'
+import type { BassGenerateRequest, BassGenerateResponse, BassGenerationRecord, BassMutationOperation, BassPattern, BassPatternExchange, BassPreferenceRecord, BassPreferenceSummary, BassPreserveOptions, BassPresetsResponse, BlindResponseResult, BlindSession, EmbodiedEvaluationResult, EmbodiedEvaluationSummary, EvaluationSummary, GenerateRequest, GenerateResponse, GrooveContext, GrooveIntent, GroovePattern, GroovePreferenceSummary, Instrument, IntegrationMode, IntentTransformResponse, JointGenerateResponse, KeyboardGenerateRequest, KeyboardGenerateResponse, KeyboardGenerationRecord, KeyboardPattern, KeyboardPatternExchange, MidiReferenceAnalysis, MotorTempoProfile, ParticipantGroup, PresetsResponse, QualityAuditReport, TapAnalysis } from '../types/generated'
 
 async function json<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, init)
@@ -97,6 +97,41 @@ export const bassApi = {
   }),
   async midi(pattern: BassPattern, channel = 0) {
     const response = await fetch(`/api/v1/bass/export-midi?channel=${channel}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(pattern) })
+    if (!response.ok) throw new Error(await response.text())
+    const href = URL.createObjectURL(await response.blob())
+    const link = document.createElement('a'); link.href = href; link.download = `${pattern.name}.mid`; link.click()
+    URL.revokeObjectURL(href)
+  },
+}
+
+export const keyboardApi = {
+  generate: (body: KeyboardGenerateRequest) => json<KeyboardGenerateResponse>('/api/v1/keyboard/generate', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+  }),
+  evaluate: (pattern: KeyboardPattern) => json<KeyboardPattern>('/api/v1/keyboard/evaluate', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(pattern),
+  }),
+  mutate: (pattern: KeyboardPattern, bars: number[]) => json<KeyboardPattern>('/api/v1/keyboard/mutate', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pattern, bars }),
+  }),
+  patterns: () => json<KeyboardPattern[]>('/api/v1/keyboard/patterns'),
+  savePattern: (pattern: KeyboardPattern) => json<KeyboardPattern>('/api/v1/keyboard/patterns', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(pattern),
+  }),
+  async deletePattern(patternId: string) {
+    const response = await fetch(`/api/v1/keyboard/patterns/${encodeURIComponent(patternId)}`, { method: 'DELETE' })
+    if (!response.ok) throw new Error(`${response.status} ${await response.text()}`)
+  },
+  generationHistory: (limit = 50) => json<KeyboardGenerationRecord[]>(`/api/v1/keyboard/history/generations?limit=${limit}`),
+  generationPattern: (generationId: number) => json<KeyboardPattern>(`/api/v1/keyboard/history/generation-records/${generationId}`),
+  exportPattern: (pattern: KeyboardPattern) => json<KeyboardPatternExchange>('/api/v1/keyboard/exchange/pattern/export', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(pattern),
+  }),
+  importPattern: (exchange: KeyboardPatternExchange) => json<KeyboardPattern>('/api/v1/keyboard/exchange/pattern/import', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(exchange),
+  }),
+  async midi(pattern: KeyboardPattern) {
+    const response = await fetch('/api/v1/keyboard/export-midi', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(pattern) })
     if (!response.ok) throw new Error(await response.text())
     const href = URL.createObjectURL(await response.blob())
     const link = document.createElement('a'); link.href = href; link.download = `${pattern.name}.mid`; link.click()

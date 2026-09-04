@@ -156,3 +156,30 @@ export type BassPresetsResponse = {
   built_in: Record<string, BassIntent>
   user: Record<string, BassIntent>
 }
+
+export type KeyboardStyleMode = 'standard' | 'earl' | 'joe' | 'johnny' | 'blend'
+export type KeyboardBlend = { earl: number, joe: number, johnny: number }
+export type DetroitKeyboardSettings = { mode: KeyboardStyleMode, blend: KeyboardBlend }
+export type KeyboardInstrument = Schema['KeyboardEvent']['instrument']
+export type KeyboardEvent = Schema['KeyboardEvent']
+export type KeyboardAnalysis = Schema['KeyboardAnalysis']
+export type KeyboardRhythmContext = Required<Schema['KeyboardRhythmContext']>
+type KeyboardPatternOutput = Schema['KeyboardPattern-Output']
+export type KeyboardPattern = Omit<KeyboardPatternOutput, 'metadata' | 'analysis' | 'rhythm_context' | 'bar_locks'> & {
+  metadata: KeyboardPatternOutput['metadata'] & { detroit_keyboard?: DetroitKeyboardSettings }
+  analysis: KeyboardAnalysis | null
+  rhythm_context: KeyboardRhythmContext
+  bar_locks: number[]
+}
+export type KeyboardGenerateRequest = Omit<Schema['KeyboardGenerateRequest'], 'meter' | 'detroit_keyboard' | 'rhythm_context'> & {
+  meter: MeterDefinition
+  detroit_keyboard?: DetroitKeyboardSettings
+  rhythm_context?: KeyboardRhythmContext
+}
+export type KeyboardGenerateResponse = Omit<Schema['KeyboardGenerateResponse'], 'candidates'> & {
+  candidates: KeyboardPattern[]
+}
+export type KeyboardGenerationRecord = Schema['KeyboardGenerationRecord']
+export type KeyboardPatternExchange = Omit<Schema['KeyboardPatternExchange-Output'], 'pattern'> & {
+  pattern: KeyboardPattern
+}

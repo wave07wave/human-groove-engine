@@ -1,4 +1,4 @@
-type PreviewOwner = 'groove' | 'bass' | 'mix'
+type PreviewOwner = 'groove' | 'bass' | 'keyboard' | 'mix'
 
 let active: { owner: PreviewOwner, stop: () => void } | null = null
 

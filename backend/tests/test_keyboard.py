@@ -1,0 +1,256 @@
+from __future__ import annotations
+
+from io import BytesIO
+from statistics import mean
+
+import mido
+from fastapi.testclient import TestClient
+
+import app.keyboard.api as keyboard_api
+from app.keyboard.generation import (
+    generate_keyboard_pattern,
+    profile_for_settings,
+    regenerate_keyboard_pattern,
+)
+from app.keyboard.midi import export_keyboard_midi
+from app.keyboard.models import (
+    DetroitKeyboardSettings,
+    KeyboardBlend,
+    KeyboardGenerateRequest,
+    KeyboardPattern,
+    KeyboardRhythmContext,
+)
+from app.keyboard.persistence import KeyboardDatabase
+from app.main import app
+
+HARMONY = "C | Am7 | F | G7 | C | Am7 | Dm7 | G7"
+
+
+def _generated(mode: str, seed: int, *, bpm: float = 100) -> KeyboardPattern:
+    return generate_keyboard_pattern(
+        KeyboardGenerateRequest(
+            bars=8,
+            seed=seed,
+            bpm=bpm,
+            harmony=HARMONY,
+            detroit_keyboard=DetroitKeyboardSettings(mode=mode),
+        )
+    )
+
+
+def _averages(mode: str) -> dict[str, float]:
+    patterns = [_generated(mode, seed) for seed in range(20, 40)]
+    fields = (
+        "onsets_per_bar",
+        "syncopation_ratio",
+        "mean_velocity",
+        "velocity_spread",
+        "timing_mean_us",
+        "timing_spread_us",
+        "register_mean",
+        "voicing_span",
+        "notes_per_onset",
+        "left_hand_ratio",
+        "melodic_ratio",
+        "grace_ratio",
+        "phrase_variation",
+        "final_resolution",
+    )
+    return {
+        field: mean(getattr(pattern.analysis, field) for pattern in patterns)
+        for field in fields
+    }
+
+
+def test_keyboard_styles_are_deterministic_and_seeded() -> None:
+    request = KeyboardGenerateRequest(
+        bars=8,
+        seed=8172,
+        harmony=HARMONY,
+        detroit_keyboard=DetroitKeyboardSettings(mode="joe"),
+    )
+    left = generate_keyboard_pattern(request, candidate=2)
+    right = generate_keyboard_pattern(request, candidate=2)
+    assert left.model_dump_json() == right.model_dump_json()
+
+    signatures = {
+        tuple(
+            (event.grid_tick, tuple(event.pitches), tuple(event.velocities), event.instrument)
+            for event in _generated("joe", seed).events
+        )
+        for seed in range(10, 20)
+    }
+    assert len(signatures) == 10
+
+
+def test_three_keyboard_languages_have_statistically_distinct_results() -> None:
+    standard = _averages("standard")
+    earl = _averages("earl")
+    joe = _averages("joe")
+    johnny = _averages("johnny")
+
+    assert earl["mean_velocity"] > standard["mean_velocity"] + 12
+    assert earl["left_hand_ratio"] > standard["left_hand_ratio"] + 0.4
+    assert earl["register_mean"] < standard["register_mean"] - 5
+    assert earl["voicing_span"] > standard["voicing_span"] + 5
+    assert earl["timing_mean_us"] < 0
+
+    assert joe["onsets_per_bar"] > earl["onsets_per_bar"] + 2
+    assert joe["syncopation_ratio"] > earl["syncopation_ratio"] + 0.15
+    assert joe["grace_ratio"] > earl["grace_ratio"] + 0.1
+    assert joe["velocity_spread"] > earl["velocity_spread"] + 3
+    assert joe["timing_mean_us"] > 1_500
+
+    assert johnny["register_mean"] > standard["register_mean"] + 10
+    assert johnny["left_hand_ratio"] < standard["left_hand_ratio"]
+    assert johnny["mean_velocity"] < standard["mean_velocity"] - 5
+    assert johnny["melodic_ratio"] > standard["melodic_ratio"] + 0.2
+    assert johnny["notes_per_onset"] < standard["notes_per_onset"] - 0.7
+
+    assert all(
+        style["final_resolution"] == 1
+        for style in (standard, earl, joe, johnny)
+    )
+
+
+def test_blend_weights_interpolate_profiles_without_fixed_phrases() -> None:
+    pure_earl = DetroitKeyboardSettings(
+        mode="blend", blend=KeyboardBlend(earl=1, joe=0, johnny=0)
+    )
+    blended = DetroitKeyboardSettings(
+        mode="blend", blend=KeyboardBlend(earl=0.2, joe=0.3, johnny=0.5)
+    )
+    earl_profile, _ = profile_for_settings(DetroitKeyboardSettings(mode="earl"), 100)
+    pure_profile, _ = profile_for_settings(pure_earl, 100)
+    blend_profile, _ = profile_for_settings(blended, 100)
+    assert pure_profile == earl_profile
+    assert earl_profile.register_center < blend_profile.register_center
+    assert blend_profile.melodic_probability > earl_profile.melodic_probability
+
+    signatures = {
+        tuple((event.grid_tick, tuple(event.pitches)) for event in generate_keyboard_pattern(
+            KeyboardGenerateRequest(seed=seed, detroit_keyboard=blended)
+        ).events)
+        for seed in range(6)
+    }
+    assert len(signatures) == 6
+
+
+def test_bpm_compensation_reduces_activity_at_fast_tempos() -> None:
+    medium_profile, _ = profile_for_settings(DetroitKeyboardSettings(mode="joe"), 100)
+    fast_profile, _ = profile_for_settings(DetroitKeyboardSettings(mode="joe"), 180)
+    assert fast_profile.density < medium_profile.density
+    assert fast_profile.fill_probability < medium_profile.fill_probability
+    assert fast_profile.grace_probability < medium_profile.grace_probability
+    assert fast_profile.timing_spread_us < medium_profile.timing_spread_us
+
+    medium = [_generated("joe", seed, bpm=100) for seed in range(12)]
+    fast = [_generated("joe", seed, bpm=180) for seed in range(12)]
+    assert mean(len(pattern.events) for pattern in fast) < mean(
+        len(pattern.events) for pattern in medium
+    )
+
+
+def test_rhythm_context_changes_the_keyboard_conversation() -> None:
+    plain = generate_keyboard_pattern(
+        KeyboardGenerateRequest(
+            bars=4,
+            seed=95,
+            detroit_keyboard=DetroitKeyboardSettings(mode="earl"),
+        )
+    )
+    context = KeyboardRhythmContext(
+        kick_ticks=[0, 960, 1_920, 3_840, 4_800, 5_760],
+        snare_ticks=[960, 2_880, 4_800, 6_720],
+        bass_ticks=[0, 480, 1_920, 2_400, 3_840, 5_280],
+    )
+    linked = generate_keyboard_pattern(
+        KeyboardGenerateRequest(
+            bars=4,
+            seed=95,
+            detroit_keyboard=DetroitKeyboardSettings(mode="earl"),
+            rhythm_context=context,
+        )
+    )
+    assert linked.analysis.context_alignment > 0
+    assert [event.grid_tick for event in linked.events] != [
+        event.grid_tick for event in plain.events
+    ]
+
+
+def test_regeneration_preserves_style_and_locked_material() -> None:
+    pattern = _generated("johnny", 661)
+    locked = pattern.events[0].model_copy(update={"locked": True})
+    pattern.events[0] = locked
+    pattern.bar_locks = [1]
+    original_bar_one = [
+        event.model_dump()
+        for event in pattern.events
+        if event.grid_tick // pattern.meter.bar_ticks == 1
+    ]
+
+    regenerated = regenerate_keyboard_pattern(pattern, {0, 1})
+    assert regenerated.metadata.detroit_keyboard.mode == "johnny"
+    assert regenerated.metadata.master_seed == pattern.metadata.master_seed + 1
+    assert regenerated.events[0] == locked
+    assert [
+        event.model_dump()
+        for event in regenerated.events
+        if event.grid_tick // pattern.meter.bar_ticks == 1
+    ] == original_bar_one
+
+
+def test_history_saved_patterns_and_legacy_payloads(tmp_path) -> None:
+    database = KeyboardDatabase(tmp_path / "keyboard.db")
+    pattern = _generated("earl", 305)
+    database.save_generation(pattern)
+    record = database.generation_history()[0]
+    restored = database.generation_record_pattern(record.generation_id)
+    assert restored is not None
+    assert restored.metadata.detroit_keyboard.mode == "earl"
+
+    database.save_pattern(pattern)
+    assert database.saved_patterns()[0].metadata.detroit_keyboard.mode == "earl"
+    assert database.delete_pattern(pattern.pattern_id) is True
+
+    legacy = pattern.model_dump(mode="json")
+    legacy["metadata"].pop("detroit_keyboard")
+    assert KeyboardPattern.model_validate(legacy).metadata.detroit_keyboard.mode == "standard"
+    assert KeyboardGenerateRequest().detroit_keyboard.mode == "standard"
+
+
+def test_keyboard_api_and_midi_contract(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(keyboard_api, "db", KeyboardDatabase(tmp_path / "api.db"))
+    client = TestClient(app)
+    capabilities = client.get("/api/v1/keyboard/capabilities").json()
+    assert capabilities["styles"] == ["standard", "earl", "joe", "johnny", "blend"]
+    assert capabilities["external_samples"] is False
+    assert capabilities["source_phrases"] is False
+
+    response = client.post(
+        "/api/v1/keyboard/generate",
+        json={
+            "bars": 4,
+            "seed": 705,
+            "candidate_count": 1,
+            "detroit_keyboard": {
+                "mode": "blend",
+                "blend": {"earl": 0.5, "joe": 0.3, "johnny": 0.2},
+            },
+        },
+    )
+    assert response.status_code == 200, response.text
+    pattern = KeyboardPattern.model_validate(response.json()["candidates"][0])
+    assert pattern.metadata.detroit_keyboard.mode == "blend"
+    assert keyboard_api.db.generation_history()[0].style == "blend"
+
+    midi = mido.MidiFile(file=BytesIO(export_keyboard_midi(pattern)))
+    text = " ".join(
+        message.text
+        for track in midi.tracks
+        for message in track
+        if message.type == "text"
+    )
+    assert "detroit_keyboard=blend" in text
+    assert "blend=0.5000,0.3000,0.2000" in text
+    assert any(message.type == "program_change" for track in midi.tracks for message in track)

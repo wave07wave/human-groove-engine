@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, expect, it, vi } from 'vitest'
-import type { BassPattern, GroovePattern } from '../types/generated'
+import type { BassPattern, GroovePattern, KeyboardPattern } from '../types/generated'
 import { QuickComposer } from './QuickComposer'
 
 const mocks = vi.hoisted(() => ({
@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   jointGenerate: vi.fn(),
   groovePresets: vi.fn(),
   bassPresets: vi.fn(),
+  keyboardGenerate: vi.fn(),
 }))
 
 vi.mock('../api/client', () => ({
@@ -16,18 +17,22 @@ vi.mock('../api/client', () => ({
     jointGenerate: mocks.jointGenerate,
     presets: mocks.bassPresets,
   },
+  keyboardApi: { generate: mocks.keyboardGenerate },
 }))
 
 beforeEach(() => {
   vi.clearAllMocks()
   mocks.groovePresets.mockResolvedValue({ built_in: { Balanced: {} }, user: {} })
   mocks.bassPresets.mockResolvedValue({ built_in: { Supportive: {} }, user: {} })
-  const groove = { pattern_id: 'groove-warm' } as GroovePattern
-  const bass = { pattern_id: 'bass-warm' } as BassPattern
+  const meter = { numerator: 4, denominator: 4, grouping: [2, 2], subdivisions_per_quarter: 4 }
+  const groove = { pattern_id: 'groove-warm', bpm: 100, bars: 4, meter, events: [] } as unknown as GroovePattern
+  const bass = { pattern_id: 'bass-warm', events: [] } as unknown as BassPattern
+  const keyboard = { pattern_id: 'keys-warm' } as KeyboardPattern
   mocks.generate.mockResolvedValue({ candidates: [groove] })
   mocks.jointGenerate.mockResolvedValue({
     candidates: [{ groove_pattern: groove, bass_pattern: bass }],
   })
+  mocks.keyboardGenerate.mockResolvedValue({ candidates: [keyboard] })
 })
 
 it('passes the selected drum sound into easy-mode generation', async () => {
@@ -50,7 +55,7 @@ it('offers every Detroit Soul drummer choice and sends the selected profile', as
   ])
   fireEvent.change(drummer, { target: { value: 'uriel' } })
   expect(screen.getByText(/広い間、ゴーストノート、強い一打/)).toBeTruthy()
-  expect(screen.getAllByText(/本人の演奏の完全な再現/)).toHaveLength(2)
+  expect(screen.getAllByText(/本人の演奏の完全な再現/)).toHaveLength(3)
   fireEvent.click(screen.getByRole('button', { name: 'まとめて作成' }))
 
   await waitFor(() => expect(mocks.generate).toHaveBeenCalledTimes(1))
@@ -103,6 +108,42 @@ it('restores the Motown Bass style when returning to easy mode', async () => {
 
   await waitFor(() => expect(mocks.jointGenerate).toHaveBeenCalledTimes(1))
   expect(mocks.jointGenerate.mock.calls[0][1].motown_bass).toEqual({ mode: 'jamerson' })
+})
+
+it('offers all three Detroit keyboardists and sends the selected style with rhythm context', async () => {
+  render(<QuickComposer groove={null} bass={null} onReady={vi.fn()} onOpenDetails={vi.fn()} />)
+  const keyboardist = await screen.findByLabelText('Detroit Soul キーボード') as HTMLSelectElement
+
+  expect(Array.from(keyboardist.options).map(option => option.value)).toEqual([
+    'standard', 'earl', 'joe', 'johnny', 'blend',
+  ])
+  fireEvent.change(keyboardist, { target: { value: 'johnny' } })
+  fireEvent.click(screen.getByRole('button', { name: 'まとめて作成' }))
+
+  await waitFor(() => expect(mocks.keyboardGenerate).toHaveBeenCalledTimes(1))
+  expect(mocks.keyboardGenerate.mock.calls[0][0].detroit_keyboard).toEqual({
+    mode: 'johnny',
+    blend: { earl: 1 / 3, joe: 1 / 3, johnny: 1 / 3 },
+  })
+  expect(mocks.keyboardGenerate.mock.calls[0][0].rhythm_context).toEqual({
+    kick_ticks: [], snare_ticks: [], bass_ticks: [],
+  })
+})
+
+it('restores and sends a detailed three-keyboardist blend in easy mode', async () => {
+  const blend = { earl: .2, joe: .3, johnny: .5 }
+  const existing = {
+    pattern_id: 'existing-keyboard-blend',
+    metadata: { detroit_keyboard: { mode: 'blend', blend } },
+  } as KeyboardPattern
+  render(<QuickComposer groove={null} bass={null} keyboard={existing} onReady={vi.fn()} onOpenDetails={vi.fn()} />)
+
+  expect((await screen.findByLabelText('Detroit Soul キーボード') as HTMLSelectElement).value).toBe('blend')
+  expect((screen.getByLabelText('Johnny の影響度') as HTMLInputElement).value).toBe('0.5')
+  fireEvent.click(screen.getByRole('button', { name: 'まとめて作成' }))
+
+  await waitFor(() => expect(mocks.keyboardGenerate).toHaveBeenCalledTimes(1))
+  expect(mocks.keyboardGenerate.mock.calls[0][0].detroit_keyboard).toEqual({ mode: 'blend', blend })
 })
 
 it('forwards a selected genre style and its preset intent', async () => {

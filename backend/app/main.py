@@ -9,6 +9,7 @@ from app.api.v1.interaction_routes import router as interaction_router
 from app.api.v1.routes import router
 from app.bass.api import router as bass_router
 from app.config import ENGINE_VERSION
+from app.keyboard.api import router as keyboard_router
 
 app = FastAPI(
     title="Human Groove Engine API",
@@ -32,6 +33,7 @@ app.add_middleware(
 app.include_router(router)
 app.include_router(bass_router)
 app.include_router(interaction_router)
+app.include_router(keyboard_router)
 
 
 @app.get("/health")

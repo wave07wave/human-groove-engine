@@ -706,6 +706,194 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/keyboard/generate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Generate */
+        post: operations["generate_api_v1_keyboard_generate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/keyboard/evaluate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Evaluate */
+        post: operations["evaluate_api_v1_keyboard_evaluate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/keyboard/mutate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mutate */
+        post: operations["mutate_api_v1_keyboard_mutate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/keyboard/export-midi": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Midi */
+        post: operations["midi_api_v1_keyboard_export_midi_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/keyboard/patterns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Patterns */
+        get: operations["patterns_api_v1_keyboard_patterns_get"];
+        put?: never;
+        /** Save Pattern */
+        post: operations["save_pattern_api_v1_keyboard_patterns_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/keyboard/patterns/{pattern_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Pattern */
+        delete: operations["delete_pattern_api_v1_keyboard_patterns__pattern_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/keyboard/history/generations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Generation History */
+        get: operations["generation_history_api_v1_keyboard_history_generations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/keyboard/history/generation-records/{generation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Generation Record Pattern */
+        get: operations["generation_record_pattern_api_v1_keyboard_history_generation_records__generation_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/keyboard/exchange/pattern/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Export Pattern */
+        post: operations["export_pattern_api_v1_keyboard_exchange_pattern_export_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/keyboard/exchange/pattern/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Import Pattern */
+        post: operations["import_pattern_api_v1_keyboard_exchange_pattern_import_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/keyboard/capabilities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Capabilities */
+        get: operations["capabilities_api_v1_keyboard_capabilities_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -1882,6 +2070,19 @@ export interface components {
             passed: boolean;
         };
         /**
+         * DetroitKeyboardSettings
+         * @description Independent, attribution-safe keyboard performance-language layer.
+         */
+        DetroitKeyboardSettings: {
+            /**
+             * Mode
+             * @default standard
+             * @enum {string}
+             */
+            mode: "standard" | "earl" | "joe" | "johnny" | "blend";
+            blend?: components["schemas"]["KeyboardBlend"];
+        };
+        /**
          * DetroitSoulBlend
          * @description Relative influences used when all three Detroit Soul profiles are blended.
          */
@@ -2788,6 +2989,370 @@ export interface components {
             tonic: components["schemas"]["SpelledPitchClass"];
             /** @default major */
             mode: components["schemas"]["ScaleMode"];
+        };
+        /** KeyboardAnalysis */
+        KeyboardAnalysis: {
+            /** Onsets Per Bar */
+            onsets_per_bar: number;
+            /** Syncopation Ratio */
+            syncopation_ratio: number;
+            /** Mean Velocity */
+            mean_velocity: number;
+            /** Velocity Spread */
+            velocity_spread: number;
+            /** Timing Mean Us */
+            timing_mean_us: number;
+            /** Timing Spread Us */
+            timing_spread_us: number;
+            /** Register Mean */
+            register_mean: number;
+            /** Voicing Span */
+            voicing_span: number;
+            /** Notes Per Onset */
+            notes_per_onset: number;
+            /** Left Hand Ratio */
+            left_hand_ratio: number;
+            /** Melodic Ratio */
+            melodic_ratio: number;
+            /** Grace Ratio */
+            grace_ratio: number;
+            /** Phrase Variation */
+            phrase_variation: number;
+            /** Context Alignment */
+            context_alignment: number;
+            /** Final Resolution */
+            final_resolution: number;
+            /** Instrument Distribution */
+            instrument_distribution?: {
+                [key: string]: number;
+            };
+        };
+        /** KeyboardBlend */
+        KeyboardBlend: {
+            /**
+             * Earl
+             * @default 0.3333333333333333
+             */
+            earl: number;
+            /**
+             * Joe
+             * @default 0.3333333333333333
+             */
+            joe: number;
+            /**
+             * Johnny
+             * @default 0.3333333333333333
+             */
+            johnny: number;
+        };
+        /** KeyboardEvent */
+        KeyboardEvent: {
+            /** Event Id */
+            event_id: string;
+            /** Grid Tick */
+            grid_tick: number;
+            /**
+             * Micro Offset Us
+             * @default 0
+             */
+            micro_offset_us: number;
+            /** Duration Tick */
+            duration_tick: number;
+            /** Pitches */
+            pitches: number[];
+            /** Velocities */
+            velocities: number[];
+            /**
+             * Instrument
+             * @default acoustic_piano
+             * @enum {string}
+             */
+            instrument: "acoustic_piano" | "tonewheel_organ" | "electric_piano" | "celeste";
+            /**
+             * Role
+             * @default comp
+             * @enum {string}
+             */
+            role: "anchor" | "comp" | "answer" | "fill" | "grace" | "resolution";
+            /**
+             * Hand
+             * @default right
+             * @enum {string}
+             */
+            hand: "left" | "right" | "both";
+            /**
+             * Articulation
+             * @default normal
+             * @enum {string}
+             */
+            articulation: "staccato" | "normal" | "tenuto" | "legato";
+            /**
+             * Locked
+             * @default false
+             */
+            locked: boolean;
+            /**
+             * Origin
+             * @default generated
+             * @enum {string}
+             */
+            origin: "generated" | "regenerated" | "user_edited";
+        };
+        /** KeyboardGenerateRequest */
+        KeyboardGenerateRequest: {
+            /**
+             * Bpm
+             * @default 100
+             */
+            bpm: number;
+            /**
+             * Bars
+             * @default 4
+             */
+            bars: number;
+            meter?: components["schemas"]["MeterDefinition"];
+            /**
+             * Harmony
+             * @default Dm7 | G7 | Cmaj7 | A7
+             */
+            harmony: string;
+            /**
+             * Key
+             * @default C
+             */
+            key: string | null;
+            /** @default major */
+            mode: components["schemas"]["ScaleMode"];
+            /**
+             * Seed
+             * @default 42
+             */
+            seed: number;
+            /**
+             * Candidate Count
+             * @default 4
+             */
+            candidate_count: number;
+            detroit_keyboard?: components["schemas"]["DetroitKeyboardSettings"];
+            rhythm_context?: components["schemas"]["KeyboardRhythmContext"];
+        };
+        /** KeyboardGenerateResponse */
+        KeyboardGenerateResponse: {
+            /** Candidates */
+            candidates: components["schemas"]["KeyboardPattern-Output"][];
+        };
+        /** KeyboardGenerationRecord */
+        KeyboardGenerationRecord: {
+            /** Generation Id */
+            generation_id: number;
+            /** Pattern Id */
+            pattern_id: string;
+            /** Name */
+            name: string;
+            /**
+             * Style
+             * @enum {string}
+             */
+            style: "standard" | "earl" | "joe" | "johnny" | "blend";
+            /** Created At */
+            created_at: string;
+            /** Schema Version */
+            schema_version: string;
+        };
+        /** KeyboardMutateRequest */
+        KeyboardMutateRequest: {
+            pattern: components["schemas"]["KeyboardPattern-Input"];
+            /** Bars */
+            bars?: number[];
+        };
+        /** KeyboardPattern */
+        "KeyboardPattern-Input": {
+            /** Pattern Id */
+            pattern_id: string;
+            /**
+             * Name
+             * @default Generated Keys
+             */
+            name: string;
+            /**
+             * Bpm
+             * @default 100
+             */
+            bpm: number;
+            /**
+             * Bars
+             * @default 4
+             */
+            bars: number;
+            meter: components["schemas"]["MeterDefinition"];
+            tempo_map: components["schemas"]["TempoMap"];
+            /**
+             * Harmony Text
+             * @default Cmaj7
+             */
+            harmony_text: string;
+            harmony: components["schemas"]["HarmonyTimeline-Input"];
+            key_context?: components["schemas"]["KeyContext"] | null;
+            /** Events */
+            events: components["schemas"]["KeyboardEvent"][];
+            rhythm_context?: components["schemas"]["KeyboardRhythmContext"];
+            /** Bar Locks */
+            bar_locks?: number[];
+            metadata: components["schemas"]["KeyboardPatternMetadata-Input"];
+            analysis?: components["schemas"]["KeyboardAnalysis"] | null;
+        };
+        /** KeyboardPattern */
+        "KeyboardPattern-Output": {
+            /** Pattern Id */
+            pattern_id: string;
+            /**
+             * Name
+             * @default Generated Keys
+             */
+            name: string;
+            /**
+             * Bpm
+             * @default 100
+             */
+            bpm: number;
+            /**
+             * Bars
+             * @default 4
+             */
+            bars: number;
+            meter: components["schemas"]["MeterDefinition"];
+            tempo_map: components["schemas"]["TempoMap"];
+            /**
+             * Harmony Text
+             * @default Cmaj7
+             */
+            harmony_text: string;
+            harmony: components["schemas"]["HarmonyTimeline-Output"];
+            key_context?: components["schemas"]["KeyContext"] | null;
+            /** Events */
+            events: components["schemas"]["KeyboardEvent"][];
+            rhythm_context?: components["schemas"]["KeyboardRhythmContext"];
+            /** Bar Locks */
+            bar_locks?: number[];
+            metadata: components["schemas"]["KeyboardPatternMetadata-Output"];
+            analysis?: components["schemas"]["KeyboardAnalysis"] | null;
+        };
+        /** KeyboardPatternExchange */
+        "KeyboardPatternExchange-Input": {
+            /**
+             * Kind
+             * @default human_keyboard_pattern
+             * @constant
+             */
+            kind: "human_keyboard_pattern";
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            pattern: components["schemas"]["KeyboardPattern-Input"];
+        };
+        /** KeyboardPatternExchange */
+        "KeyboardPatternExchange-Output": {
+            /**
+             * Kind
+             * @default human_keyboard_pattern
+             * @constant
+             */
+            kind: "human_keyboard_pattern";
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            pattern: components["schemas"]["KeyboardPattern-Output"];
+        };
+        /** KeyboardPatternMetadata */
+        "KeyboardPatternMetadata-Input": {
+            /**
+             * Engine Version
+             * @default 0.11.0
+             */
+            engine_version: string;
+            /**
+             * Schema Version
+             * @default 1.0
+             */
+            schema_version: string;
+            /**
+             * Analysis Version
+             * @default 1.5
+             */
+            analysis_version: string;
+            /**
+             * Rng Algorithm
+             * @default PCG64DXSM/SHA-256
+             */
+            rng_algorithm: string;
+            /** Master Seed */
+            master_seed: number;
+            /**
+             * Candidate Index
+             * @default 0
+             */
+            candidate_index: number;
+            /**
+             * Revision
+             * @default 0
+             */
+            revision: number;
+            detroit_keyboard?: components["schemas"]["DetroitKeyboardSettings"];
+            /** Generation Notes */
+            generation_notes?: string[];
+        };
+        /** KeyboardPatternMetadata */
+        "KeyboardPatternMetadata-Output": {
+            /**
+             * Engine Version
+             * @default 0.11.0
+             */
+            engine_version: string;
+            /**
+             * Schema Version
+             * @default 1.0
+             */
+            schema_version: string;
+            /**
+             * Analysis Version
+             * @default 1.5
+             */
+            analysis_version: string;
+            /**
+             * Rng Algorithm
+             * @default PCG64DXSM/SHA-256
+             */
+            rng_algorithm: string;
+            /** Master Seed */
+            master_seed: number;
+            /**
+             * Candidate Index
+             * @default 0
+             */
+            candidate_index: number;
+            /**
+             * Revision
+             * @default 0
+             */
+            revision: number;
+            detroit_keyboard?: components["schemas"]["DetroitKeyboardSettings"];
+            /** Generation Notes */
+            generation_notes?: string[];
+        };
+        /** KeyboardRhythmContext */
+        KeyboardRhythmContext: {
+            /** Kick Ticks */
+            kick_ticks?: number[];
+            /** Snare Ticks */
+            snare_ticks?: number[];
+            /** Bass Ticks */
+            bass_ticks?: number[];
         };
         /** KickEvent */
         KickEvent: {
@@ -4894,6 +5459,370 @@ export interface operations {
         };
     };
     capabilities_api_v1_interaction_capabilities_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    generate_api_v1_keyboard_generate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KeyboardGenerateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KeyboardGenerateResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    evaluate_api_v1_keyboard_evaluate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KeyboardPattern-Input"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KeyboardPattern-Output"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mutate_api_v1_keyboard_mutate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KeyboardMutateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KeyboardPattern-Output"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    midi_api_v1_keyboard_export_midi_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KeyboardPattern-Input"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patterns_api_v1_keyboard_patterns_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KeyboardPattern-Output"][];
+                };
+            };
+        };
+    };
+    save_pattern_api_v1_keyboard_patterns_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KeyboardPattern-Input"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KeyboardPattern-Output"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_pattern_api_v1_keyboard_patterns__pattern_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pattern_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    generation_history_api_v1_keyboard_history_generations_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KeyboardGenerationRecord"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    generation_record_pattern_api_v1_keyboard_history_generation_records__generation_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                generation_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KeyboardPattern-Output"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_pattern_api_v1_keyboard_exchange_pattern_export_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KeyboardPattern-Input"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KeyboardPatternExchange-Output"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    import_pattern_api_v1_keyboard_exchange_pattern_import_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KeyboardPatternExchange-Input"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KeyboardPattern-Output"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    capabilities_api_v1_keyboard_capabilities_get: {
         parameters: {
             query?: never;
             header?: never;
