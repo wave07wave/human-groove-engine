@@ -1,12 +1,13 @@
 import * as Tone from 'tone'
 import type { KeyboardInstrument, KeyboardPattern } from '../types/generated'
 import { prepareAudioOutput } from './audioOutput'
-import { claimPreview, releasePreview } from './previewCoordinator'
+import { claimPreview, isActivePreview, releasePreview } from './previewCoordinator'
 
 export type KeyboardVoices = Record<KeyboardInstrument, Tone.PolySynth>
 
 let playing = false
 let voices: KeyboardVoices | null = null
+let startToken = 0
 
 function tickSeconds(tick: number, bpm: number) { return tick * 60 / (bpm * 960) }
 
@@ -43,12 +44,15 @@ export function scheduleKeyboardPattern(
     const baseDuration = Math.max(.025, tickSeconds(event.duration_tick, pattern.bpm))
     const duration = event.articulation === 'staccato' ? Math.min(.13, baseDuration) : baseDuration
     const notes = event.pitches.map(pitch => Tone.Frequency(pitch, 'midi').toFrequency())
-    const gain = Math.min(1, Math.max(...event.velocities) / 127)
-    transport.schedule(time => collection[event.instrument].triggerAttackRelease(notes, duration, time, gain), onset)
+    transport.schedule(time => notes.forEach((note, index) => {
+      const gain = Math.min(1, event.velocities[index] / 127)
+      collection[event.instrument].triggerAttackRelease(note, duration, time, gain)
+    }), onset)
   }
 }
 
 function stop(onState: (value: boolean) => void) {
+  startToken += 1
   Tone.getTransport().stop()
   Tone.getTransport().cancel()
   disposeKeyboardVoices(voices)
@@ -58,13 +62,24 @@ function stop(onState: (value: boolean) => void) {
   onState(false)
 }
 
+export function stopKeyboardPreview(onState: (value: boolean) => void) {
+  if (playing || isActivePreview('keyboard')) stop(onState)
+  else onState(false)
+}
+
 export async function toggleKeyboardPreview(
   pattern: KeyboardPattern,
   onState: (value: boolean) => void,
 ) {
   if (playing) { stop(onState); return }
+  const token = ++startToken
   claimPreview('keyboard', () => stop(onState))
-  try { await prepareAudioOutput() } catch (cause) { releasePreview('keyboard'); throw cause }
+  try { await prepareAudioOutput() } catch (cause) {
+    if (token !== startToken) return
+    releasePreview('keyboard')
+    throw cause
+  }
+  if (token !== startToken) return
   disposeKeyboardVoices(voices)
   voices = createKeyboardVoices()
   const transport = Tone.getTransport()

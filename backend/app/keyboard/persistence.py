@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -8,10 +9,19 @@ from app.config import DATABASE_PATH, SCHEMA_VERSION
 
 from .models import KeyboardGenerationRecord, KeyboardPattern
 
+MAX_GENERATION_HISTORY = 500
+
 
 class KeyboardDatabase:
-    def __init__(self, path: Path = DATABASE_PATH):
+    def __init__(
+        self,
+        path: Path = DATABASE_PATH,
+        generation_history_limit: int = MAX_GENERATION_HISTORY,
+    ):
+        if generation_history_limit < 1:
+            raise ValueError("generation history limit must be positive")
         self.path = path
+        self.generation_history_limit = generation_history_limit
         self._initialize()
 
     def connect(self) -> sqlite3.Connection:
@@ -39,16 +49,33 @@ class KeyboardDatabase:
             """)
 
     def save_generation(self, pattern: KeyboardPattern) -> None:
+        """Save one generation while retaining compatibility with existing callers."""
+        self.save_generations([pattern])
+
+    def save_generations(self, patterns: Sequence[KeyboardPattern]) -> None:
+        """Save a candidate batch and prune old history in one transaction."""
+        if not patterns:
+            return
+        created_at = datetime.now(UTC).isoformat()
+        rows = [
+            (
+                pattern.pattern_id,
+                pattern.model_dump_json(),
+                created_at,
+                SCHEMA_VERSION,
+            )
+            for pattern in patterns
+        ]
         with self.connect() as db:
-            db.execute(
+            db.executemany(
                 "INSERT INTO keyboard_generations(pattern_id,payload,created_at,schema_version) "
                 "VALUES(?,?,?,?)",
-                (
-                    pattern.pattern_id,
-                    pattern.model_dump_json(),
-                    datetime.now(UTC).isoformat(),
-                    SCHEMA_VERSION,
-                ),
+                rows,
+            )
+            db.execute(
+                "DELETE FROM keyboard_generations WHERE id IN "
+                "(SELECT id FROM keyboard_generations ORDER BY id DESC LIMIT -1 OFFSET ?)",
+                (self.generation_history_limit,),
             )
 
     def generation_history(self, limit: int = 50) -> list[KeyboardGenerationRecord]:

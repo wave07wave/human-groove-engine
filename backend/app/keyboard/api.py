@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import re
+from urllib.parse import quote
+
 from fastapi import APIRouter, HTTPException, Query, Response
 
 from .generation import (
@@ -9,6 +12,8 @@ from .generation import (
 )
 from .midi import export_keyboard_midi
 from .models import (
+    KEYBOARD_ANALYSIS_VERSION,
+    KEYBOARD_GENERATION_VERSION,
     KeyboardGenerateRequest,
     KeyboardGenerateResponse,
     KeyboardGenerationRecord,
@@ -22,17 +27,34 @@ router = APIRouter(prefix="/api/v1/keyboard", tags=["keyboard"])
 db = KeyboardDatabase()
 
 
+def _midi_content_disposition(pattern_id: str) -> str:
+    """Build an ASCII-safe header while retaining a UTF-8 download name."""
+    ascii_stem = re.sub(r"[^A-Za-z0-9._-]+", "-", pattern_id).strip(".-")
+    ascii_stem = (ascii_stem or "keyboard-pattern")[:120]
+    encoded_name = quote(f"{pattern_id[:120]}.mid", safe="")
+    return (
+        f'attachment; filename="{ascii_stem}.mid"; '
+        f"filename*=UTF-8''{encoded_name}"
+    )
+
+
 @router.post("/generate", response_model=KeyboardGenerateResponse)
 def generate(request: KeyboardGenerateRequest) -> KeyboardGenerateResponse:
-    candidates = generate_keyboard_candidates(request)
-    for pattern in candidates:
-        db.save_generation(pattern)
+    try:
+        candidates = generate_keyboard_candidates(request)
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    db.save_generations(candidates)
     return KeyboardGenerateResponse(candidates=candidates)
 
 
 @router.post("/evaluate", response_model=KeyboardPattern)
 def evaluate(pattern: KeyboardPattern) -> KeyboardPattern:
-    pattern.analysis = analyze_keyboard_pattern(pattern)
+    try:
+        pattern.analysis = analyze_keyboard_pattern(pattern)
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    pattern.metadata.keyboard_analysis_version = KEYBOARD_ANALYSIS_VERSION
     return pattern
 
 
@@ -42,7 +64,8 @@ def mutate(request: KeyboardMutateRequest) -> KeyboardPattern:
         pattern = regenerate_keyboard_pattern(request.pattern, request.bars)
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
-    db.save_generation(pattern)
+    if pattern.pattern_id != request.pattern.pattern_id:
+        db.save_generation(pattern)
     return pattern
 
 
@@ -51,7 +74,7 @@ def midi(pattern: KeyboardPattern) -> Response:
     return Response(
         export_keyboard_midi(pattern),
         media_type="audio/midi",
-        headers={"Content-Disposition": f'attachment; filename="{pattern.pattern_id}.mid"'},
+        headers={"Content-Disposition": _midi_content_disposition(pattern.pattern_id)},
     )
 
 
@@ -119,4 +142,6 @@ def capabilities() -> dict:
         "midi_export": True,
         "external_samples": False,
         "source_phrases": False,
+        "generation_version": KEYBOARD_GENERATION_VERSION,
+        "analysis_version": KEYBOARD_ANALYSIS_VERSION,
     }

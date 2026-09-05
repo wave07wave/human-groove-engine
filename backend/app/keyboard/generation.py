@@ -1,14 +1,21 @@
 from __future__ import annotations
 
+import hashlib
+import json
+import re
+from bisect import bisect_left
 from dataclasses import dataclass, fields
 from statistics import mean, pstdev
 
 from app.bass.harmony import build_harmony_timeline, harmony_at, scale_pitch_classes
 from app.bass.models import InputMode, ScaleMode, TempoMap, TempoSegment
 from app.config import MAX_MICROTIMING_US, PPQ
+from app.engine.pulse import strong_positions
 from app.random.seeds import HierarchicalRNG
 
 from .models import (
+    KEYBOARD_ANALYSIS_VERSION,
+    KEYBOARD_GENERATION_VERSION,
     DetroitKeyboardSettings,
     KeyboardAnalysis,
     KeyboardEvent,
@@ -40,6 +47,10 @@ class KeyboardPerformanceProfile:
     timing_spread_us: float
     register_center: float
     duration_ratio: float
+    ending_pickup_probability: float
+    ending_triplet_probability: float
+    resolution_duration_ratio: float
+    resolution_accent: float
 
 
 STANDARD_PROFILE = KeyboardPerformanceProfile(
@@ -62,6 +73,10 @@ STANDARD_PROFILE = KeyboardPerformanceProfile(
     timing_spread_us=500,
     register_center=62,
     duration_ratio=0.68,
+    ending_pickup_probability=0.22,
+    ending_triplet_probability=0.18,
+    resolution_duration_ratio=0.78,
+    resolution_accent=8,
 )
 
 STYLE_PROFILES = {
@@ -85,6 +100,10 @@ STYLE_PROFILES = {
         timing_spread_us=850,
         register_center=55,
         duration_ratio=0.52,
+        ending_pickup_probability=0.38,
+        ending_triplet_probability=0.12,
+        resolution_duration_ratio=0.56,
+        resolution_accent=18,
     ),
     "joe": KeyboardPerformanceProfile(
         density=0.66,
@@ -106,6 +125,10 @@ STYLE_PROFILES = {
         timing_spread_us=1_650,
         register_center=59,
         duration_ratio=0.60,
+        ending_pickup_probability=0.76,
+        ending_triplet_probability=0.82,
+        resolution_duration_ratio=0.72,
+        resolution_accent=10,
     ),
     "johnny": KeyboardPerformanceProfile(
         density=0.42,
@@ -127,6 +150,10 @@ STYLE_PROFILES = {
         timing_spread_us=1_050,
         register_center=72,
         duration_ratio=0.82,
+        ending_pickup_probability=0.24,
+        ending_triplet_probability=0.34,
+        resolution_duration_ratio=0.96,
+        resolution_accent=3,
     ),
 }
 
@@ -157,9 +184,47 @@ INSTRUMENT_WEIGHTS: dict[str, dict[KeyboardInstrument, float]] = {
     },
 }
 
+_MAX_PATTERN_ID_LENGTH = 200
+_REVISION_SUFFIX_RESERVE = 22  # "-r" plus room for a 20-digit revision.
+_SHORT_ID_DIGEST_LENGTH = 12
+
 
 def _clamp(value: float) -> float:
     return max(0.0, min(1.0, float(value)))
+
+
+def _regenerated_pattern_id(pattern_id: str, revision: int) -> str:
+    base = re.sub(r"(?:-r\d+)+$", "", pattern_id)
+    reserved_base_length = _MAX_PATTERN_ID_LENGTH - _REVISION_SUFFIX_RESERVE
+    if len(base) > reserved_base_length:
+        digest = hashlib.sha256(base.encode()).hexdigest()[:_SHORT_ID_DIGEST_LENGTH]
+        prefix_length = reserved_base_length - len(digest) - 1
+        base = f"{base[:prefix_length]}-{digest}"
+    suffix = f"-r{revision}"
+    if len(base) + len(suffix) > _MAX_PATTERN_ID_LENGTH:
+        digest = hashlib.sha256(base.encode()).hexdigest()[:_SHORT_ID_DIGEST_LENGTH]
+        prefix_length = _MAX_PATTERN_ID_LENGTH - len(suffix) - len(digest) - 1
+        base = f"{base[:prefix_length]}-{digest}"
+    return f"{base}{suffix}"
+
+
+def _pulse_positions(meter) -> tuple[int, ...]:
+    """Return the musically perceived pulse starts within one bar."""
+    if meter.denominator in {2, 4}:
+        step = PPQ * 4 // meter.denominator
+        return tuple(range(0, meter.bar_ticks, step))
+    return tuple(strong_positions(meter))
+
+
+def _near_tick(sorted_ticks: list[int], target: int, tolerance: int) -> bool:
+    if not sorted_ticks:
+        return False
+    index = bisect_left(sorted_ticks, target)
+    return any(
+        abs(sorted_ticks[position] - target) <= tolerance
+        for position in (index - 1, index)
+        if 0 <= position < len(sorted_ticks)
+    )
 
 
 def _style_weights(settings: DetroitKeyboardSettings) -> dict[str, float]:
@@ -193,6 +258,9 @@ def profile_for_settings(
         values["fill_probability"] + slow * 0.03 - fast * 0.15
     )
     values["grace_probability"] = _clamp(values["grace_probability"] - fast * 0.12)
+    values["ending_pickup_probability"] = _clamp(
+        values["ending_pickup_probability"] + slow * 0.03 - fast * 0.18
+    )
     values["timing_spread_us"] *= max(0.58, min(1.20, (100 / max(30, bpm)) ** 0.5))
     profile = KeyboardPerformanceProfile(**values)
     instruments = {
@@ -282,9 +350,11 @@ def _candidate_onsets(
     onsets: dict[int, str] = {}
     eighth = PPQ // 2
     context = request.rhythm_context
-    kick_ticks = set(context.kick_ticks)
-    bass_ticks = set(context.bass_ticks)
-    snare_ticks = set(context.snare_ticks)
+    kick_ticks = sorted(set(context.kick_ticks))
+    bass_ticks = sorted(set(context.bass_ticks))
+    snare_ticks = sorted(set(context.snare_ticks))
+    context_tolerance = max(PPQ // 16, min(PPQ // 6, request.meter.subdivision_tick // 2))
+    pulse_positions = set(_pulse_positions(request.meter))
     contour = (0.84, 1.02, 1.18, 0.72)
     for bar in range(request.bars):
         bar_start = bar * request.meter.bar_ticks
@@ -293,16 +363,16 @@ def _candidate_onsets(
         variation = contour[bar % len(contour)]
         for tick in range(bar_start, bar_end, eighth):
             local = tick - bar_start
-            strong = local % PPQ == 0
+            strong = local in pulse_positions
             probability = profile.density * variation
             probability *= 0.86 if strong else profile.offbeat_probability
             if local == 0:
                 probability = max(probability, 0.92)
-            if tick in kick_ticks:
+            if _near_tick(kick_ticks, tick, context_tolerance):
                 probability += 0.22 * profile.context_lock
-            if tick in bass_ticks:
+            if _near_tick(bass_ticks, tick, context_tolerance):
                 probability += 0.10 * profile.context_lock - 0.16 * profile.context_complement
-            if tick - eighth in snare_ticks:
+            if _near_tick(snare_ticks, tick - eighth, context_tolerance):
                 probability += 0.12 * profile.context_complement
             if bar_rng.random() < _clamp(probability):
                 if local == 0:
@@ -328,8 +398,23 @@ def _candidate_onsets(
         if not any(bar_start <= tick < bar_end for tick in onsets):
             onsets[bar_start] = "anchor"
 
-    final_tick = max(0, request.bars * request.meter.bar_ticks - PPQ)
+    final_bar_start = (request.bars - 1) * request.meter.bar_ticks
+    final_local_tick = max(pulse_positions)
+    final_tick = final_bar_start + final_local_tick
     onsets = {tick: role for tick, role in onsets.items() if tick <= final_tick}
+    ending_rng = hrng.stream("keyboard-ending", candidate)
+    if final_local_tick > 0 and ending_rng.random() < profile.ending_pickup_probability:
+        ordered_pulses = sorted(pulse_positions)
+        final_pulse_index = ordered_pulses.index(final_local_tick)
+        previous_pulse = ordered_pulses[final_pulse_index - 1]
+        pulse_width = final_local_tick - previous_pulse
+        if ending_rng.random() < profile.ending_triplet_probability:
+            lead = max(request.meter.subdivision_tick, round(pulse_width / 3))
+        else:
+            lead = max(request.meter.subdivision_tick, pulse_width // 2)
+        pickup_tick = final_tick - lead
+        if pickup_tick > final_bar_start:
+            onsets[pickup_tick] = "fill"
     onsets[final_tick] = "resolution"
     return sorted(onsets.items())
 
@@ -346,6 +431,9 @@ def _render_events(
     pattern_end = request.bars * request.meter.bar_ticks
     events: list[KeyboardEvent] = []
     previous_top: int | None = None
+    primary_instrument = _instrument(
+        instrument_weights, hrng.stream("keyboard-instrument", candidate)
+    )
     for index, (tick, role) in enumerate(onsets):
         rng = hrng.stream("keyboard-performance", candidate, tick, role)
         next_tick = onsets[index + 1][0] if index + 1 < len(onsets) else pattern_end
@@ -359,7 +447,15 @@ def _render_events(
             previous_top=previous_top,
         )
         previous_top = pitches[-1]
-        accent = 10 if role in {"anchor", "resolution"} else 4 if role == "answer" else 0
+        accent = (
+            profile.resolution_accent
+            if role == "resolution"
+            else 10
+            if role == "anchor"
+            else 4
+            if role == "answer"
+            else 0
+        )
         velocities = [
             max(
                 24,
@@ -378,7 +474,10 @@ def _render_events(
             velocities = [max(30, velocity - 8) for velocity in velocities]
         if role == "resolution":
             articulation = "tenuto"
-            duration = min(pattern_end - tick, max(PPQ, round(available * 0.94)))
+            duration = min(
+                pattern_end - tick,
+                max(60, round(available * profile.resolution_duration_ratio)),
+            )
         else:
             roll = rng.random()
             articulation = (
@@ -397,7 +496,7 @@ def _render_events(
             -MAX_MICROTIMING_US,
             min(MAX_MICROTIMING_US, round(center + rng.normal(0, profile.timing_spread_us))),
         )
-        instrument = _instrument(instrument_weights, rng)
+        instrument = primary_instrument
         events.append(
             KeyboardEvent(
                 event_id=hrng.id("keyboard", candidate, tick, role),
@@ -440,6 +539,17 @@ def _render_events(
 
 
 def analyze_keyboard_pattern(pattern: KeyboardPattern) -> KeyboardAnalysis:
+    end_tick = pattern.bars * pattern.meter.bar_ticks
+    if not pattern.harmony.events:
+        raise ValueError("keyboard harmony timeline cannot be empty")
+    harmony_cursor = 0
+    for harmony_event in pattern.harmony.events:
+        if harmony_event.start_tick != harmony_cursor:
+            raise ValueError("keyboard harmony timeline must be continuous from tick zero")
+        harmony_cursor = harmony_event.start_tick + harmony_event.duration_tick
+    if harmony_cursor != end_tick:
+        raise ValueError("keyboard harmony timeline must cover the complete pattern")
+
     events = pattern.events
     if not events:
         return KeyboardAnalysis(
@@ -467,11 +577,15 @@ def analyze_keyboard_pattern(pattern: KeyboardPattern) -> KeyboardAnalysis:
         sum(event.grid_tick // pattern.meter.bar_ticks == bar for event in events)
         for bar in range(pattern.bars)
     ]
-    context_ticks = set(
-        pattern.rhythm_context.kick_ticks
-        + pattern.rhythm_context.snare_ticks
-        + pattern.rhythm_context.bass_ticks
+    context_ticks = sorted(
+        set(
+            pattern.rhythm_context.kick_ticks
+            + pattern.rhythm_context.snare_ticks
+            + pattern.rhythm_context.bass_ticks
+        )
     )
+    context_tolerance = max(PPQ // 16, min(PPQ // 6, pattern.meter.subdivision_tick // 2))
+    pulse_positions = set(_pulse_positions(pattern.meter))
     instrument_counts = {
         name: sum(event.instrument == name for event in events)
         for name in INSTRUMENT_WEIGHTS["standard"]
@@ -480,7 +594,11 @@ def analyze_keyboard_pattern(pattern: KeyboardPattern) -> KeyboardAnalysis:
     root, _ = _pitch_classes(pattern.harmony, last.grid_tick)
     return KeyboardAnalysis(
         onsets_per_bar=len(events) / pattern.bars,
-        syncopation_ratio=sum(event.grid_tick % PPQ != 0 for event in events) / len(events),
+        syncopation_ratio=sum(
+            event.grid_tick % pattern.meter.bar_ticks not in pulse_positions
+            for event in events
+        )
+        / len(events),
         mean_velocity=mean(velocities),
         velocity_spread=pstdev(velocities),
         timing_mean_us=mean(event.micro_offset_us for event in events),
@@ -489,11 +607,19 @@ def analyze_keyboard_pattern(pattern: KeyboardPattern) -> KeyboardAnalysis:
         voicing_span=mean(spans),
         notes_per_onset=mean(len(event.pitches) for event in events),
         left_hand_ratio=sum(event.hand in {"left", "both"} for event in events) / len(events),
-        melodic_ratio=sum(event.role in {"answer", "fill"} for event in events) / len(events),
+        melodic_ratio=sum(
+            event.role in {"answer", "fill"} and len(event.pitches) == 1
+            for event in events
+        )
+        / len(events),
         grace_ratio=sum(event.role == "grace" for event in events) / len(events),
         phrase_variation=pstdev(counts),
         context_alignment=(
-            sum(event.grid_tick in context_ticks for event in events) / len(events)
+            sum(
+                _near_tick(context_ticks, event.grid_tick, context_tolerance)
+                for event in events
+            )
+            / len(events)
             if context_ticks
             else 0
         ),
@@ -536,8 +662,12 @@ def generate_keyboard_pattern(
         "johnny": "Johnny-inspired",
         "blend": "Detroit blend",
     }[request.detroit_keyboard.mode]
+    fingerprint_payload = request.model_dump(mode="json", exclude={"candidate_count"})
+    fingerprint = hashlib.sha256(
+        json.dumps(fingerprint_payload, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()[:12]
     pattern = KeyboardPattern(
-        pattern_id=f"keys-{request.seed}-{candidate}",
+        pattern_id=f"keys-{request.seed}-{candidate}-{fingerprint}",
         name=f"{label} Keys {candidate + 1}",
         bpm=request.bpm,
         bars=request.bars,
@@ -551,6 +681,8 @@ def generate_keyboard_pattern(
         metadata=KeyboardPatternMetadata(
             master_seed=request.seed,
             candidate_index=candidate,
+            keyboard_generation_version=KEYBOARD_GENERATION_VERSION,
+            keyboard_analysis_version=KEYBOARD_ANALYSIS_VERSION,
             detroit_keyboard=request.detroit_keyboard.model_copy(deep=True),
             generation_notes=[
                 "Generative keyboard language only; no recording or source phrase was used."
@@ -575,6 +707,8 @@ def regenerate_keyboard_pattern(
     if any(bar < 0 or bar >= pattern.bars for bar in bars):
         raise ValueError("selected keyboard bar outside pattern")
     bars -= set(pattern.bar_locks)
+    if not bars:
+        return pattern.model_copy(deep=True)
     fresh = generate_keyboard_pattern(
         KeyboardGenerateRequest(
             bpm=pattern.bpm,
@@ -593,7 +727,8 @@ def regenerate_keyboard_pattern(
             candidate_count=1,
             detroit_keyboard=pattern.metadata.detroit_keyboard,
             rhythm_context=pattern.rhythm_context,
-        )
+        ),
+        candidate=pattern.metadata.candidate_index,
     )
     kept = [
         event
@@ -608,9 +743,17 @@ def regenerate_keyboard_pattern(
         and event.grid_tick not in locked_ticks
     ]
     result = pattern.model_copy(deep=True)
+    result.harmony = fresh.harmony.model_copy(deep=True)
+    result.key_context = (
+        fresh.key_context.model_copy(deep=True) if fresh.key_context else None
+    )
     result.events = sorted(kept + replacements, key=lambda event: (event.grid_tick, event.event_id))
     result.metadata.master_seed += 1
     result.metadata.revision += 1
-    result.pattern_id = f"{pattern.pattern_id}-r{result.metadata.revision}"
+    result.metadata.keyboard_generation_version = KEYBOARD_GENERATION_VERSION
+    result.metadata.keyboard_analysis_version = KEYBOARD_ANALYSIS_VERSION
+    result.pattern_id = _regenerated_pattern_id(
+        pattern.pattern_id, result.metadata.revision
+    )
     result.analysis = analyze_keyboard_pattern(result)
     return KeyboardPattern.model_validate(result.model_dump())

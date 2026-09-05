@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { keyboardApi } from '../api/client'
+import { stopActivePreview } from '../audio/previewCoordinator'
 import { useHistory } from '../hooks/useHistory'
 import type { BassPattern, DetroitKeyboardSettings, GroovePattern, KeyboardEvent, KeyboardGenerateRequest, KeyboardGenerationRecord, KeyboardPattern } from '../types/generated'
 import { DEFAULT_DETROIT_KEYBOARD } from '../utils/detroitKeyboard'
+import { layoutKeyboardBarEvents } from '../utils/keyboardLayout'
 import { METERS } from '../utils/meters'
 import { DetroitKeyboardControl } from './DetroitKeyboardControl'
 import './keyboard.css'
@@ -55,15 +57,31 @@ export function KeyboardApp({ groovePattern, bassPattern, externalPattern, onKey
   const appliedExternalId = useRef<string | null>(null)
   const restoredId = useRef<string | null>(null)
   const patternBarTicks = pattern ? pattern.meter.numerator * 960 * 4 / pattern.meter.denominator : 3840
+  const currentContext = rhythmContext(groovePattern, bassPattern)
+  const settingsDirty = Boolean(pattern && (
+    pattern.bpm !== bpm
+    || pattern.bars !== bars
+    || `${pattern.meter.numerator}/${pattern.meter.denominator}` !== meter
+    || pattern.harmony_text !== harmony
+    || pattern.metadata.master_seed !== seed
+    || JSON.stringify(pattern.metadata.detroit_keyboard ?? DEFAULT_DETROIT_KEYBOARD) !== JSON.stringify(settings)
+    || ((groovePattern || bassPattern)
+      && JSON.stringify(pattern.rhythm_context) !== JSON.stringify(currentContext))
+  ))
 
   useEffect(() => {
     if (!pattern && externalPattern) return
     onKeyboardPatternChange?.(pattern)
   }, [externalPattern, onKeyboardPatternChange, pattern])
   useEffect(() => {
-    keyboardApi.patterns().then(setSavedPatterns).catch(() => undefined)
-    keyboardApi.generationHistory().then(setGenerationHistory).catch(() => undefined)
+    Promise.all([keyboardApi.patterns(), keyboardApi.generationHistory()])
+      .then(([saved, generations]) => {
+        setSavedPatterns(saved)
+        setGenerationHistory(generations)
+      })
+      .catch(() => setError('Keysの保存一覧または履歴を読み込めませんでした。'))
   }, [])
+  useEffect(() => () => stopActivePreview('keyboard'), [pattern?.pattern_id])
   useEffect(() => {
     if (!externalPattern || appliedExternalId.current === externalPattern.pattern_id) return
     appliedExternalId.current = externalPattern.pattern_id
@@ -77,6 +95,7 @@ export function KeyboardApp({ groovePattern, bassPattern, externalPattern, onKey
     setSettings(structuredClone(pattern.metadata.detroit_keyboard ?? DEFAULT_DETROIT_KEYBOARD))
     setBpm(pattern.bpm)
     setBars(pattern.bars)
+    setSeed(pattern.metadata.master_seed)
     setHarmony(pattern.harmony_text)
     const name = `${pattern.meter.numerator}/${pattern.meter.denominator}`
     if (METERS[name]) setMeter(name)
@@ -85,6 +104,7 @@ export function KeyboardApp({ groovePattern, bassPattern, externalPattern, onKey
   const generate = async () => {
     setBusy(true)
     setError('')
+    setNotice('')
     try {
       const nextSeed = seed >= 2_147_483_647 ? 0 : seed + 1
       setSeed(nextSeed)
@@ -104,7 +124,8 @@ export function KeyboardApp({ groovePattern, bassPattern, externalPattern, onKey
       setCandidates(response.candidates)
       history.commit(response.candidates[0])
       setSelectedBars(new Set())
-      setGenerationHistory(await keyboardApi.generationHistory())
+      keyboardApi.generationHistory().then(setGenerationHistory)
+        .catch(() => setNotice('Keysは生成されましたが、履歴一覧を更新できませんでした。'))
     } catch (cause) {
       setError(`Keysを生成できませんでした: ${String(cause)}`)
     } finally {
@@ -116,12 +137,18 @@ export function KeyboardApp({ groovePattern, bassPattern, externalPattern, onKey
     if (!pattern) return
     setBusy(true)
     setError('')
+    setNotice('')
     try {
       const next = await keyboardApi.mutate(pattern, [...selectedBars])
       history.commit(next)
-      setCandidates(items => [next, ...items.filter(item => item.pattern_id !== pattern.pattern_id).slice(0, 3)])
+      setCandidates(items => {
+        const index = items.findIndex(item => item.pattern_id === pattern.pattern_id)
+        if (index < 0) return [next, ...items].slice(0, 4)
+        return items.map((item, itemIndex) => itemIndex === index ? next : item)
+      })
       setSelectedBars(new Set())
-      setGenerationHistory(await keyboardApi.generationHistory())
+      keyboardApi.generationHistory().then(setGenerationHistory)
+        .catch(() => setNotice('Keysは再生成されましたが、履歴一覧を更新できませんでした。'))
     } catch (cause) {
       setError(`Keysを再生成できませんでした: ${String(cause)}`)
     } finally {
@@ -153,16 +180,22 @@ export function KeyboardApp({ groovePattern, bassPattern, externalPattern, onKey
   const savePattern = async () => {
     if (!pattern) return
     setBusy(true)
+    setError('')
     try {
       await keyboardApi.savePattern(pattern)
-      setSavedPatterns(await keyboardApi.patterns())
       setSavedPatternId(pattern.pattern_id)
       setNotice('Keysパターンを保存しました')
+      keyboardApi.patterns().then(setSavedPatterns)
+        .catch(() => setNotice('保存しましたが、保存一覧を更新できませんでした。'))
     } catch (cause) { setError(String(cause)) } finally { setBusy(false) }
   }
   const applyPattern = (next: KeyboardPattern) => {
     history.commit(next)
     setCandidates([next])
+    setSelectedBars(new Set())
+  }
+  const selectCandidate = (next: KeyboardPattern) => {
+    history.commit(next)
     setSelectedBars(new Set())
   }
   const loadSaved = () => {
@@ -174,6 +207,12 @@ export function KeyboardApp({ groovePattern, bassPattern, externalPattern, onKey
     setBusy(true)
     try { applyPattern(await keyboardApi.generationPattern(Number(generationId))) }
     catch (cause) { setError(String(cause)) } finally { setBusy(false) }
+  }
+  const exportMidi = async () => {
+    if (!pattern) return
+    setError('')
+    try { await keyboardApi.midi(pattern) }
+    catch (cause) { setError(`MIDIを書き出せませんでした: ${String(cause)}`) }
   }
 
   return <div className="app-shell keyboard-app">
@@ -199,21 +238,32 @@ export function KeyboardApp({ groovePattern, bassPattern, externalPattern, onKey
         <div className="primary-actions">
           <button className="generate" disabled={busy} onClick={generate}>{busy ? '作成中…' : 'Keysを作成'}</button>
           <button className={playing ? 'play active' : 'play'} disabled={!pattern} onClick={() => { if (pattern) void import('../audio/keyboardPreview').then(module => module.toggleKeyboardPreview(pattern, setPlaying)).catch(cause => setError(String(cause))) }}>{playing ? '■ 停止' : '▶ Keys再生'}</button>
-          <button className="secondary" disabled={!pattern || busy} onClick={regenerate}>↻ 選択小節を再作成</button>
-          <button className="secondary" disabled={!pattern} onClick={() => pattern && keyboardApi.midi(pattern)}>↓ MIDI</button>
+          <button className="secondary" disabled={!pattern || busy} onClick={regenerate}>{selectedBars.size ? '↻ 選択小節を再作成' : '↻ 全小節を再作成'}</button>
+          <button className="secondary" disabled={!pattern || busy} onClick={exportMidi}>↓ MIDI</button>
         </div>
-        {error && <p className="error">{error}</p>}
-        {notice && <p className="keyboard-notice">{notice}</p>}
+        {settingsDirty && <p className="keyboard-pending" role="status">設定が変わっています。「Keysを作成」で新しい設定を反映できます。再生・保存・MIDIは現在表示中のパターンを使用します。</p>}
+        {error && <p className="error" role="alert">{error}</p>}
+        {notice && <p className="keyboard-notice" role="status">{notice}</p>}
       </section>
 
-      {candidates.length > 0 && <section className="candidates keyboard-candidates">{candidates.map((item, index) => <button className={pattern?.pattern_id === item.pattern_id ? 'candidate active' : 'candidate'} key={item.pattern_id} onClick={() => applyPattern(item)}><b>{String.fromCharCode(65 + index)}</b><span>Keys候補</span><small>{item.events.length} onsets</small></button>)}</section>}
+      {candidates.length > 0 && <section className="candidates keyboard-candidates">{candidates.map((item, index) => <button aria-pressed={pattern?.pattern_id === item.pattern_id} className={pattern?.pattern_id === item.pattern_id ? 'candidate active' : 'candidate'} key={item.pattern_id} onClick={() => selectCandidate(item)}><b>{String.fromCharCode(65 + index)}</b><span>Keys候補</span><small>{item.events.length} onsets</small></button>)}</section>}
 
       {pattern && <section className="keyboard-roll panel">
         <div className="keyboard-roll-heading"><div><p className="eyebrow">KEYBOARD TIMELINE</p><h2>{pattern.name}</h2></div><span>小節番号を選び、部分再生成できます。鍵盤イベントを押すとロックします。</span></div>
-        <div className="keyboard-bars">{Array.from({ length: pattern.bars }, (_, bar) => <article key={bar} className={selectedBars.has(bar) ? 'selected' : ''}>
-          <button className="bar-selector" onClick={() => toggleBar(bar)}>BAR {bar + 1}</button>
-          <div>{pattern.events.filter(event => Math.floor(event.grid_tick / patternBarTicks) === bar).map(event => <button title={event.pitches.map(pitchLabel).join(' · ')} className={`keyboard-event ${event.instrument} ${event.locked ? 'locked' : ''}`} key={event.event_id} onClick={() => toggleEventLock(event)} style={{ left: `${((event.grid_tick % patternBarTicks) / patternBarTicks) * 100}%` }}><b>{instrumentLabels[event.instrument]}</b><small>{pitchLabel(event.pitches.at(-1) ?? 60)} · {event.role}</small></button>)}</div>
-        </article>)}</div>
+        <div className="keyboard-bars">{Array.from({ length: pattern.bars }, (_, bar) => {
+          const barEvents = pattern.events.filter(event => Math.floor(event.grid_tick / patternBarTicks) === bar)
+          const positioned = layoutKeyboardBarEvents(barEvents, patternBarTicks)
+          const laneCount = Math.max(1, ...positioned.map(item => item.lane + 1))
+          return <article key={bar} className={selectedBars.has(bar) ? 'selected' : ''} style={{ minHeight: `${Math.max(54, laneCount * 44 + 10)}px` }}>
+            <button aria-pressed={selectedBars.has(bar)} className="bar-selector" onClick={() => toggleBar(bar)}>BAR {bar + 1}</button>
+            <div>{positioned.map(({ event, lane, edge }) => {
+              const pitches = event.pitches.map(pitchLabel).join(' · ')
+              const lockState = event.locked ? 'ロック済み' : '未ロック'
+              const position = (event.grid_tick % patternBarTicks) / patternBarTicks
+              return <button aria-pressed={event.locked} aria-label={`${instrumentLabels[event.instrument]}、${pitches}、${event.role}、${lockState}`} title={pitches} className={`keyboard-event ${event.instrument} ${edge ? 'edge' : ''} ${event.locked ? 'locked' : ''}`} key={event.event_id} onClick={() => toggleEventLock(event)} style={{ left: `${position * 100}%`, top: `${7 + lane * 44}px` }}><b>{instrumentLabels[event.instrument]}</b><small>{pitchLabel(event.pitches.at(-1) ?? 60)} · {event.role}</small></button>
+            })}</div>
+          </article>
+        })}</div>
       </section>}
 
       {pattern?.analysis && <section className="keyboard-analysis panel">

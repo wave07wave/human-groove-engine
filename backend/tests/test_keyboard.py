@@ -7,6 +7,7 @@ import mido
 from fastapi.testclient import TestClient
 
 import app.keyboard.api as keyboard_api
+from app.bass.models import TempoMap, TempoSegment
 from app.keyboard.generation import (
     generate_keyboard_pattern,
     profile_for_settings,
@@ -16,12 +17,14 @@ from app.keyboard.midi import export_keyboard_midi
 from app.keyboard.models import (
     DetroitKeyboardSettings,
     KeyboardBlend,
+    KeyboardEvent,
     KeyboardGenerateRequest,
     KeyboardPattern,
     KeyboardRhythmContext,
 )
 from app.keyboard.persistence import KeyboardDatabase
 from app.main import app
+from app.models.meter import MeterDefinition
 
 HARMONY = "C | Am7 | F | G7 | C | Am7 | Dm7 | G7"
 
@@ -151,6 +154,49 @@ def test_bpm_compensation_reduces_activity_at_fast_tempos() -> None:
     )
 
 
+def test_keyboard_styles_have_distinct_seeded_ending_behaviors() -> None:
+    def ending_averages(mode: str) -> tuple[float, float, float]:
+        observations: list[tuple[float, float, float]] = []
+        for seed in range(120, 200):
+            pattern = _generated(mode, seed)
+            resolution = next(
+                event for event in pattern.events if event.role == "resolution"
+            )
+            previous_pulse = resolution.grid_tick - pattern.meter.bar_ticks // 4
+            has_pickup = any(
+                previous_pulse < event.grid_tick < resolution.grid_tick
+                and event.role == "fill"
+                for event in pattern.events
+            )
+            resolution_length = resolution.duration_tick / (
+                pattern.bars * pattern.meter.bar_ticks - resolution.grid_tick
+            )
+            ordinary_velocities = [
+                mean(event.velocities)
+                for event in pattern.events
+                if event.role not in {"resolution", "grace"}
+            ]
+            resolution_lift = mean(resolution.velocities) - mean(ordinary_velocities)
+            observations.append(
+                (float(has_pickup), resolution_length, resolution_lift)
+            )
+        return tuple(
+            mean(observation[index] for observation in observations)
+            for index in range(3)
+        )
+
+    earl = ending_averages("earl")
+    joe = ending_averages("joe")
+    johnny = ending_averages("johnny")
+
+    assert joe[0] > earl[0] + 0.25
+    assert joe[0] > johnny[0] + 0.25
+    assert earl[1] < joe[1] - 0.10
+    assert joe[1] < johnny[1] - 0.15
+    assert earl[2] > joe[2] + 4
+    assert joe[2] > johnny[2] + 5
+
+
 def test_rhythm_context_changes_the_keyboard_conversation() -> None:
     plain = generate_keyboard_pattern(
         KeyboardGenerateRequest(
@@ -160,9 +206,9 @@ def test_rhythm_context_changes_the_keyboard_conversation() -> None:
         )
     )
     context = KeyboardRhythmContext(
-        kick_ticks=[0, 960, 1_920, 3_840, 4_800, 5_760],
-        snare_ticks=[960, 2_880, 4_800, 6_720],
-        bass_ticks=[0, 480, 1_920, 2_400, 3_840, 5_280],
+        kick_ticks=[1, 961, 1_921, 3_841, 4_801, 5_761],
+        snare_ticks=[959, 2_879, 4_799, 6_719],
+        bass_ticks=[2, 482, 1_922, 2_402, 3_842, 5_282],
     )
     linked = generate_keyboard_pattern(
         KeyboardGenerateRequest(
@@ -176,6 +222,49 @@ def test_rhythm_context_changes_the_keyboard_conversation() -> None:
     assert [event.grid_tick for event in linked.events] != [
         event.grid_tick for event in plain.events
     ]
+
+
+def test_compound_meter_uses_a_distinct_pulse_and_resolution() -> None:
+    common = {
+        "bars": 1,
+        "seed": 37,
+        "candidate_count": 1,
+        "detroit_keyboard": DetroitKeyboardSettings(mode="earl"),
+    }
+    three_four = generate_keyboard_pattern(
+        KeyboardGenerateRequest(
+            **common,
+            meter=MeterDefinition.from_name("3/4"),
+        )
+    )
+    six_eight = generate_keyboard_pattern(
+        KeyboardGenerateRequest(
+            **common,
+            meter=MeterDefinition.from_name("6/8"),
+        )
+    )
+    assert three_four.meter.bar_ticks == six_eight.meter.bar_ticks
+    assert three_four.events != six_eight.events
+    three_four_resolution = next(
+        event.grid_tick for event in three_four.events if event.role == "resolution"
+    )
+    six_eight_resolution = next(
+        event.grid_tick for event in six_eight.events if event.role == "resolution"
+    )
+    assert three_four_resolution == 1_920
+    assert six_eight_resolution == 1_440
+
+
+def test_keyboard_event_keeps_pitch_velocity_pairs_when_sorted() -> None:
+    event = KeyboardEvent(
+        event_id="pair-order",
+        grid_tick=0,
+        duration_tick=240,
+        pitches=[72, 60, 67],
+        velocities=[120, 40, 80],
+    )
+    assert event.pitches == [60, 67, 72]
+    assert event.velocities == [40, 80, 120]
 
 
 def test_regeneration_preserves_style_and_locked_material() -> None:
@@ -200,6 +289,48 @@ def test_regeneration_preserves_style_and_locked_material() -> None:
     ] == original_bar_one
 
 
+def test_regeneration_preserves_candidate_stream_and_locked_noop() -> None:
+    request = KeyboardGenerateRequest(
+        bars=4,
+        seed=918,
+        detroit_keyboard=DetroitKeyboardSettings(mode="joe"),
+    )
+    left = regenerate_keyboard_pattern(generate_keyboard_pattern(request, 0), set())
+    right = regenerate_keyboard_pattern(generate_keyboard_pattern(request, 1), set())
+    assert left.metadata.candidate_index == 0
+    assert right.metadata.candidate_index == 1
+    assert left.events != right.events
+
+    locked = generate_keyboard_pattern(request, 2)
+    locked.bar_locks = list(range(locked.bars))
+    untouched = regenerate_keyboard_pattern(locked, set())
+    assert untouched.model_dump_json() == locked.model_dump_json()
+
+
+def test_repeated_regeneration_keeps_long_legacy_ids_bounded_and_deterministic() -> None:
+    request = KeyboardGenerateRequest(
+        bars=1,
+        seed=410,
+        detroit_keyboard=DetroitKeyboardSettings(mode="johnny"),
+    )
+    left = generate_keyboard_pattern(request)
+    left.pattern_id = "legacy-" + "x" * 193
+    right = left.model_copy(deep=True)
+    identifiers: list[str] = []
+
+    for revision in range(1, 56):
+        left = regenerate_keyboard_pattern(left, {0})
+        right = regenerate_keyboard_pattern(right, {0})
+        assert left.pattern_id == right.pattern_id
+        assert left.pattern_id.endswith(f"-r{revision}")
+        assert len(left.pattern_id) <= 200
+        identifiers.append(left.pattern_id)
+
+    assert len(set(identifiers)) == 55
+    assert left.metadata.revision == 55
+    assert left.model_dump_json() == right.model_dump_json()
+
+
 def test_history_saved_patterns_and_legacy_payloads(tmp_path) -> None:
     database = KeyboardDatabase(tmp_path / "keyboard.db")
     pattern = _generated("earl", 305)
@@ -218,9 +349,41 @@ def test_history_saved_patterns_and_legacy_payloads(tmp_path) -> None:
     assert KeyboardPattern.model_validate(legacy).metadata.detroit_keyboard.mode == "standard"
     assert KeyboardGenerateRequest().detroit_keyboard.mode == "standard"
 
+    same_seed_other_style = _generated("joe", 305)
+    assert same_seed_other_style.pattern_id != pattern.pattern_id
+    database.save_pattern(pattern)
+    database.save_pattern(same_seed_other_style)
+    assert len(database.saved_patterns()) == 2
+
+
+def test_generation_batches_are_bounded_and_single_save_stays_compatible(tmp_path) -> None:
+    database = KeyboardDatabase(
+        tmp_path / "bounded-history.db", generation_history_limit=3
+    )
+    patterns = [_generated("earl", 500 + index) for index in range(5)]
+
+    database.save_generations(patterns[:4])
+    assert [record.pattern_id for record in database.generation_history(10)] == [
+        pattern.pattern_id for pattern in reversed(patterns[1:4])
+    ]
+
+    database.save_generation(patterns[4])
+    assert [record.pattern_id for record in database.generation_history(10)] == [
+        pattern.pattern_id for pattern in reversed(patterns[2:5])
+    ]
+
 
 def test_keyboard_api_and_midi_contract(tmp_path, monkeypatch) -> None:
-    monkeypatch.setattr(keyboard_api, "db", KeyboardDatabase(tmp_path / "api.db"))
+    database = KeyboardDatabase(tmp_path / "api.db")
+    saved_batches: list[list[KeyboardPattern]] = []
+    save_generations = database.save_generations
+
+    def record_batch(patterns: list[KeyboardPattern]) -> None:
+        saved_batches.append(list(patterns))
+        save_generations(patterns)
+
+    monkeypatch.setattr(database, "save_generations", record_batch)
+    monkeypatch.setattr(keyboard_api, "db", database)
     client = TestClient(app)
     capabilities = client.get("/api/v1/keyboard/capabilities").json()
     assert capabilities["styles"] == ["standard", "earl", "joe", "johnny", "blend"]
@@ -232,7 +395,7 @@ def test_keyboard_api_and_midi_contract(tmp_path, monkeypatch) -> None:
         json={
             "bars": 4,
             "seed": 705,
-            "candidate_count": 1,
+            "candidate_count": 4,
             "detroit_keyboard": {
                 "mode": "blend",
                 "blend": {"earl": 0.5, "joe": 0.3, "johnny": 0.2},
@@ -240,6 +403,9 @@ def test_keyboard_api_and_midi_contract(tmp_path, monkeypatch) -> None:
         },
     )
     assert response.status_code == 200, response.text
+    assert response.headers.get("content-encoding") == "gzip"
+    assert len(saved_batches) == 1
+    assert len(saved_batches[0]) == 4
     pattern = KeyboardPattern.model_validate(response.json()["candidates"][0])
     assert pattern.metadata.detroit_keyboard.mode == "blend"
     assert keyboard_api.db.generation_history()[0].style == "blend"
@@ -254,3 +420,75 @@ def test_keyboard_api_and_midi_contract(tmp_path, monkeypatch) -> None:
     assert "detroit_keyboard=blend" in text
     assert "blend=0.5000,0.3000,0.2000" in text
     assert any(message.type == "program_change" for track in midi.tracks for message in track)
+
+    invalid = client.post(
+        "/api/v1/keyboard/generate",
+        json={"candidate_count": 1, "harmony": "H???"},
+    )
+    assert invalid.status_code == 422
+
+
+def test_midi_tempo_boundaries_and_same_pitch_retriggers() -> None:
+    pattern = _generated("johnny", 808)
+    final_tick = pattern.bars * pattern.meter.bar_ticks
+    pattern.tempo_map = TempoMap(
+        segments=[
+            TempoSegment(start_tick=0, bpm=100),
+            TempoSegment(start_tick=pattern.meter.bar_ticks, bpm=140),
+        ]
+    )
+    pattern.events = [
+        KeyboardEvent(
+            event_id="first",
+            grid_tick=0,
+            duration_tick=960,
+            pitches=[60],
+            velocities=[70],
+            instrument="acoustic_piano",
+        ),
+        KeyboardEvent(
+            event_id="retrigger",
+            grid_tick=480,
+            duration_tick=960,
+            pitches=[60],
+            velocities=[95],
+            instrument="acoustic_piano",
+        ),
+        KeyboardEvent(
+            event_id="boundary",
+            grid_tick=final_tick - 1,
+            micro_offset_us=25_000,
+            duration_tick=1,
+            pitches=[72],
+            velocities=[100],
+            instrument="acoustic_piano",
+        ),
+    ]
+    midi = mido.MidiFile(file=BytesIO(export_keyboard_midi(pattern)))
+
+    absolute = 0
+    tempo_events = []
+    for message in midi.tracks[0]:
+        absolute += message.time
+        if message.type == "set_tempo":
+            tempo_events.append((absolute, round(mido.tempo2bpm(message.tempo))))
+    assert tempo_events == [(0, 100), (pattern.meter.bar_ticks, 140)]
+
+    absolute = 0
+    notes = []
+    for message in midi.tracks[1]:
+        absolute += message.time
+        if message.type in {"note_on", "note_off"}:
+            notes.append((absolute, message.type, message.note))
+    pitch_60 = [item for item in notes if item[2] == 60]
+    assert pitch_60 == [
+        (0, "note_on", 60),
+        (480, "note_off", 60),
+        (480, "note_on", 60),
+        (1_440, "note_off", 60),
+    ]
+    pitch_72 = [item for item in notes if item[2] == 72]
+    assert pitch_72 == [
+        (final_tick - 1, "note_on", 72),
+        (final_tick, "note_off", 72),
+    ]

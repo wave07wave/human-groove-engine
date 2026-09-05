@@ -1,15 +1,17 @@
 import * as Tone from 'tone'
 import { prepareAudioOutput } from './audioOutput'
 import type { BassPattern, GroovePattern, KeyboardPattern } from '../types/generated'
-import { claimPreview, releasePreview } from './previewCoordinator'
+import { claimPreview, isActivePreview, releasePreview } from './previewCoordinator'
 import { DrumKitVoice } from './drumKit'
 import { drumKitProfile, type DrumSoundId } from './drumKitProfile'
 import { createKeyboardVoices, disposeKeyboardVoices, scheduleKeyboardPattern, type KeyboardVoices } from './keyboardPreview'
+import { patternDurationSeconds } from '../utils/patternDuration'
 
 let playing = false
 let drumKit: DrumKitVoice | null = null
 let bass: Tone.MonoSynth | Tone.PolySynth | null = null
 let keyboard: KeyboardVoices | null = null
+let startToken = 0
 
 function tickSeconds(tick: number, bpm: number) { return tick * 60 / (bpm * 960) }
 
@@ -23,12 +25,18 @@ function dispose() {
 }
 
 function stop(onState: (value: boolean) => void) {
+  startToken += 1
   Tone.getTransport().stop()
   Tone.getTransport().cancel()
   dispose()
   releasePreview('mix')
   playing = false
   onState(false)
+}
+
+export function stopMixPreview(onState: (value: boolean) => void) {
+  if (playing || isActivePreview('mix')) stop(onState)
+  else onState(false)
 }
 
 function bassPerformance(event: BassPattern['events'][number], bpm: number) {
@@ -46,13 +54,25 @@ export async function toggleMixPreview(
   onState: (value: boolean) => void,
 ) {
   if (playing) { stop(onState); return }
+  const token = ++startToken
   claimPreview('mix', () => stop(onState))
-  try { await prepareAudioOutput() } catch (cause) { releasePreview('mix'); throw cause }
-  dispose()
+  try { await prepareAudioOutput() } catch (cause) {
+    if (token !== startToken) return
+    releasePreview('mix')
+    throw cause
+  }
+  if (token !== startToken) return
   const soundProfile = drumKitProfile(groove.metadata.render_profile as DrumSoundId)
   const nextKit = new DrumKitVoice(groove.metadata.render_profile as DrumSoundId)
+  try { await nextKit.ready() } catch (cause) {
+    nextKit.dispose()
+    if (token !== startToken) return
+    releasePreview('mix')
+    throw cause
+  }
+  if (token !== startToken) { nextKit.dispose(); return }
+  dispose()
   drumKit = nextKit
-  try { await nextKit.ready() } catch (cause) { dispose(); releasePreview('mix'); throw cause }
   bass = bassPattern.voice_policy === 'allow_overlap'
     ? new Tone.PolySynth(Tone.Synth, { oscillator: { type: soundProfile.warmBass ? 'sine' : 'triangle' }, envelope: { attack: soundProfile.warmBass ? .012 : .008, decay: soundProfile.warmBass ? .2 : .12, sustain: soundProfile.warmBass ? .54 : .48, release: soundProfile.warmBass ? .22 : .12 }, volume: -5 }).connect(nextKit.input)
     : new Tone.MonoSynth({ oscillator: { type: soundProfile.warmBass ? 'sine' : 'triangle' }, envelope: { attack: soundProfile.warmBass ? .012 : .008, decay: soundProfile.warmBass ? .2 : .12, sustain: soundProfile.warmBass ? .54 : .48, release: soundProfile.warmBass ? .22 : .12 }, volume: -5 }).connect(nextKit.input)
@@ -76,7 +96,11 @@ export async function toggleMixPreview(
     transport.schedule(time => bass?.triggerAttackRelease(Tone.Frequency(event.pitch, 'midi').toFrequency(), performance.duration, time, performance.gain), onset)
   }
   if (keyboardPattern && keyboard) scheduleKeyboardPattern(keyboardPattern, keyboard, transport)
-  const total = Math.max(groove.bars, bassPattern.bars, keyboardPattern?.bars ?? 0) * groove.meter.numerator * 60 * 4 / (groove.bpm * groove.meter.denominator)
+  const total = Math.max(
+    patternDurationSeconds(groove),
+    patternDurationSeconds(bassPattern),
+    keyboardPattern ? patternDurationSeconds(keyboardPattern) : 0,
+  )
   transport.schedule(() => stop(onState), total + .1)
   playing = true
   onState(true)

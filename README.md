@@ -11,6 +11,11 @@ The repository now also contains the first independently usable **Human Bass Eng
 designed around the shared Music Core contracts and ready to consume Groove Engine context without
 depending on Groove generator internals.
 
+The **Human Keys Engine** adds deterministic, original keyboard accompaniment with independent
+Earl Van Dyke-, Joe Hunter- and Johnny Griffith-inspired performance-language controls and a
+three-way blend. It uses generated voicings and the existing synthesized preview only; no source
+recording or transcribed phrase is bundled.
+
 ## Included MVP
 
 - 1–64 bars; 4/4, 3/4, 5/4, 5/8, 6/8 and 12/8
@@ -41,6 +46,8 @@ depending on Groove generator internals.
 - Meter-aware call-and-response figures that strengthen offbeat hooks and phrase turnarounds
 - Genre rhythm vocabularies for Funk, Hip Hop, House and Rock, alongside neutral custom styles
 - Style-separated Groove/Bass preference profiles with legacy-data migration
+- Detroit Soul keyboard styles and blend controls in both easy and detailed workflows
+- Groove/Bass-aware keyboard phrasing, four candidates, partial regeneration, history and MIDI export
 - Adaptive score-hidden Groove/Bass pair scheduling, contextual audition, ties and safe retries
 - Consent-gated six-trial blind listening blocks with anchor-retest consistency and group-separated intervals
 - Version-bound 21-control response, diversity, determinism and latency quality audit
@@ -157,12 +164,25 @@ Bass endpoints:
 - `POST /api/v1/bass/exchange/{pattern,intent,preset}/{export,import}`
 - `GET /api/v1/bass/capabilities`
 
+Keyboard endpoints:
+
+- `POST /api/v1/keyboard/generate`
+- `POST /api/v1/keyboard/evaluate`
+- `POST /api/v1/keyboard/mutate`
+- `POST /api/v1/keyboard/export-midi`
+- `GET|POST /api/v1/keyboard/patterns`
+- `GET /api/v1/keyboard/history/generations`
+- `GET /api/v1/keyboard/history/generation-records/{generation_id}`
+- `POST /api/v1/keyboard/exchange/pattern/{export,import}`
+- `GET /api/v1/keyboard/capabilities`
+
 Bass generation supports chord progressions, key/mode and no-chord input, 1–64 bars, 4/4, 3/4, 6/8
 and 12/8 meter-aware behavior, four deterministic/diverse candidates, directed approaches, register and
 voice-leading constraints, composed silence, kick lock/complement/answer context, measured Bass DNA,
 field-specific regeneration, refine and Type 1 MIDI export.
 
-Use the `GROOVE / BASS` switch in the browser to open the Bass workspace. It includes a structured
+Use the `GROOVE / BASS / KEYS` switch in the browser to open each detailed workspace. The Bass view
+includes a structured
 Harmony editor for Root, Quality, Duration and optional Slash Bass, a repeating bar-timeline preview,
 Key/Mode controls, behaviour presets, ten macro controls, A/B/C/D candidates, a horizontally scalable
 Piano Roll with functional labels, Kick overlay, optional Structural Preview, per-note grid-tick/pitch/
@@ -249,6 +269,8 @@ types via `npm run generate:types` in `frontend/`.
 - Browser preview uses bundled CC0 acoustic Kick, Snare, Hi-hat and wooden Percussion recordings. Bass
   and optional chord/click context remain synthesized; the backend reference scorer is also a controlled
   synth proxy rather than analysis of those recordings.
+- The public demo's server-side Bass/Keys saved libraries and generation history are anonymous shared
+  storage, not private user accounts. Render's temporary database can also reset on a restart or deploy.
 - Preference learning is deliberately local and small-data; profiles are not synced between devices.
 - Adaptive comparison order is an explainable sample-efficiency heuristic, not a guarantee that every
   listener's most informative question is always selected.

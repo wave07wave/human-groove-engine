@@ -34,6 +34,7 @@ const pattern = {
   rhythm_context: { kick_ticks: [], snare_ticks: [], bass_ticks: [] },
   bar_locks: [],
   metadata: {
+    master_seed: 43,
     detroit_keyboard: { mode: 'joe', blend: { earl: 1 / 3, joe: 1 / 3, johnny: 1 / 3 } },
   },
   analysis: null,
@@ -85,13 +86,21 @@ it('restores an easy-mode pattern without overwriting the next detailed generati
     ...pattern,
     pattern_id: 'easy-keys',
     name: 'Easy Keys',
-    metadata: { detroit_keyboard: { mode: 'earl', blend: { earl: 1, joe: 0, johnny: 0 } } },
+    metadata: {
+      ...pattern.metadata,
+      master_seed: 42,
+      detroit_keyboard: { mode: 'earl', blend: { earl: 1, joe: 0, johnny: 0 } },
+    },
   } as KeyboardPattern
   const generated = {
     ...pattern,
     pattern_id: 'detailed-keys',
     name: 'Detailed Keys',
-    metadata: { detroit_keyboard: { mode: 'johnny', blend: { earl: 0, joe: 0, johnny: 1 } } },
+    metadata: {
+      ...pattern.metadata,
+      master_seed: 43,
+      detroit_keyboard: { mode: 'johnny', blend: { earl: 0, joe: 0, johnny: 1 } },
+    },
   } as KeyboardPattern
   const onChange = vi.fn()
   mocks.generate.mockResolvedValue({ candidates: [generated] })
@@ -103,4 +112,119 @@ it('restores an easy-mode pattern without overwriting the next detailed generati
 
   expect(await screen.findByText('Detailed Keys')).toBeTruthy()
   await waitFor(() => expect(onChange).toHaveBeenLastCalledWith(generated))
+})
+
+it('keeps all generated candidates available after choosing candidate B', async () => {
+  const candidates = Array.from({ length: 4 }, (_, index) => ({
+    ...pattern,
+    pattern_id: `keys-candidate-${index}`,
+    name: `Candidate ${String.fromCharCode(65 + index)}`,
+    metadata: { ...pattern.metadata, candidate_index: index },
+  } as KeyboardPattern))
+  mocks.generate.mockResolvedValue({ candidates })
+  render(<KeyboardApp groovePattern={null} bassPattern={null} />)
+
+  fireEvent.click(screen.getByRole('button', { name: 'Keysを作成' }))
+  expect(await screen.findByText('Candidate A')).toBeTruthy()
+  const candidateButtons = screen.getAllByRole('button', { name: /Keys候補/ })
+  expect(candidateButtons).toHaveLength(4)
+  expect(new Set(candidates.map(candidate => candidate.pattern_id)).size).toBe(4)
+
+  fireEvent.click(candidateButtons[1])
+
+  expect(await screen.findByText('Candidate B')).toBeTruthy()
+  expect(screen.getAllByRole('button', { name: /Keys候補/ })).toHaveLength(4)
+  expect(screen.getAllByRole('button', { name: /Keys候補/ })[1].getAttribute('aria-pressed')).toBe('true')
+})
+
+it('keeps a regenerated candidate in its original candidate slot', async () => {
+  const candidates = Array.from({ length: 4 }, (_, index) => ({
+    ...pattern,
+    pattern_id: `keys-stream-${index}`,
+    name: `Stream ${String.fromCharCode(65 + index)}`,
+    metadata: { ...pattern.metadata, candidate_index: index },
+  } as KeyboardPattern))
+  const regenerated = {
+    ...candidates[1],
+    pattern_id: 'keys-stream-1-r1',
+    name: 'Stream B regenerated',
+  } as KeyboardPattern
+  mocks.generate.mockResolvedValue({ candidates })
+  mocks.mutate.mockResolvedValue(regenerated)
+  render(<KeyboardApp groovePattern={null} bassPattern={null} />)
+
+  fireEvent.click(screen.getByRole('button', { name: 'Keysを作成' }))
+  expect(await screen.findByText('Stream A')).toBeTruthy()
+  fireEvent.click(screen.getAllByRole('button', { name: /Keys候補/ })[1])
+  expect(await screen.findByText('Stream B')).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: '↻ 全小節を再作成' }))
+
+  expect(await screen.findByText('Stream B regenerated')).toBeTruthy()
+  const buttons = screen.getAllByRole('button', { name: /Keys候補/ })
+  expect(buttons).toHaveLength(4)
+  expect(buttons[1].getAttribute('aria-pressed')).toBe('true')
+  fireEvent.click(buttons[0])
+  expect(await screen.findByText('Stream A')).toBeTruthy()
+  fireEvent.click(screen.getAllByRole('button', { name: /Keys候補/ })[2])
+  expect(await screen.findByText('Stream C')).toBeTruthy()
+})
+
+it('keeps a successful generation when only the history refresh fails', async () => {
+  render(<KeyboardApp groovePattern={null} bassPattern={null} />)
+  await waitFor(() => expect(mocks.generationHistory).toHaveBeenCalledTimes(1))
+  mocks.generationHistory.mockRejectedValueOnce(new Error('history offline'))
+
+  fireEvent.click(screen.getByRole('button', { name: 'Keysを作成' }))
+
+  expect(await screen.findByText('Generated Keys')).toBeTruthy()
+  expect((await screen.findByText(
+    'Keysは生成されましたが、履歴一覧を更新できませんでした。',
+  )).textContent).toContain('Keysは生成されましたが、履歴一覧を更新できませんでした。')
+  expect(screen.queryByText(/Keysを生成できませんでした/)).toBeNull()
+})
+
+it('reports a MIDI export failure without losing the current pattern', async () => {
+  mocks.midi.mockRejectedValueOnce(new Error('download failed'))
+  render(<KeyboardApp groovePattern={null} bassPattern={null} externalPattern={pattern} />)
+  expect(await screen.findByText('Generated Keys')).toBeTruthy()
+
+  fireEvent.click(screen.getByRole('button', { name: '↓ MIDI' }))
+
+  expect((await screen.findByRole('alert')).textContent).toContain('MIDIを書き出せませんでした')
+  expect(screen.getByText('Generated Keys')).toBeTruthy()
+})
+
+it('announces that changed controls have not altered the displayed pattern', async () => {
+  const current = {
+    ...pattern,
+    metadata: {
+      ...pattern.metadata,
+      master_seed: 42,
+      detroit_keyboard: { mode: 'standard', blend: { earl: 1 / 3, joe: 1 / 3, johnny: 1 / 3 } },
+    },
+  } as KeyboardPattern
+  render(<KeyboardApp groovePattern={null} bassPattern={null} externalPattern={current} />)
+  expect(await screen.findByText('Generated Keys')).toBeTruthy()
+  await waitFor(() => expect(screen.queryByText(/設定が変わっています/)).toBeNull())
+
+  fireEvent.change(screen.getByLabelText('Detroit Soul キーボード'), {
+    target: { value: 'johnny' },
+  })
+
+  expect((await screen.findByRole('status')).textContent).toContain(
+    '再生・保存・MIDIは現在表示中のパターンを使用します。',
+  )
+})
+
+it('does not mark a standalone history pattern dirty only because it remembers rhythm context', async () => {
+  const historical = {
+    ...pattern,
+    metadata: { ...pattern.metadata, master_seed: 77 },
+    rhythm_context: { kick_ticks: [0, 960], snare_ticks: [960], bass_ticks: [0, 480] },
+  } as KeyboardPattern
+  render(<KeyboardApp groovePattern={null} bassPattern={null} externalPattern={historical} />)
+
+  expect(await screen.findByText('Generated Keys')).toBeTruthy()
+  await waitFor(() => expect((screen.getByLabelText('KEYS SEED') as HTMLInputElement).value).toBe('77'))
+  expect(screen.queryByText(/設定が変わっています/)).toBeNull()
 })

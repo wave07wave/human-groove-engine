@@ -1,3 +1,249 @@
-.keyboard-app{--amber:#cf9cff;--lime:#78d6b2;--blue:#8fb4ff}.keyboard-brand{width:46px;background:#cf9cff;color:#1b1022;font-size:8px}.keyboard-transport{display:grid;grid-template-columns:90px 90px 90px 110px minmax(260px,1fr);gap:10px;margin-bottom:12px}.keyboard-transport label{font:500 8px DM Mono;letter-spacing:.1em;color:var(--muted)}.keyboard-transport input,.keyboard-transport select{display:block;width:100%;height:37px;margin-top:6px;background:#11100e;border:1px solid #39342e;color:var(--ink);padding:0 9px}.detroit-keyboard-control{display:grid;grid-template-columns:230px 1fr;gap:12px 18px;padding:14px;border:1px solid #513c60;background:#18131c}.keyboard-style-heading label{display:grid;gap:6px;color:var(--amber);font:500 8px DM Mono;letter-spacing:.1em}.keyboard-style-heading select{margin:0}.keyboard-style-heading p{margin:7px 0 0;color:var(--muted);font-size:9px;line-height:1.55}.detroit-keyboard-control ul{display:flex;align-content:center;align-items:center;flex-wrap:wrap;gap:6px;margin:0;padding:0;list-style:none}.detroit-keyboard-control li{padding:5px 7px;border:1px solid #59436a;font:500 8px DM Mono;color:var(--ink)}.detroit-keyboard-control>small{grid-column:1/-1;color:#706878;font-size:8px;line-height:1.5}.keyboard-blend-controls{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding-top:10px;border-top:1px solid #3b3042}.keyboard-blend-controls label{display:grid;grid-template-columns:1fr auto;gap:5px;color:var(--muted);font:500 8px DM Mono}.keyboard-blend-controls input{grid-column:1/-1;width:100%;accent-color:var(--amber)}.keyboard-blend-controls b{color:var(--ink)}.keyboard-link{display:flex;align-items:center;gap:10px;margin-top:10px}.keyboard-link span{font-size:9px;color:var(--muted)}.keyboard-notice{margin:8px 0 0;color:var(--amber);font:500 9px DM Mono}.keyboard-candidates .candidate.active{border-color:var(--amber);box-shadow:inset 3px 0 var(--amber)}.keyboard-roll{margin-top:13px;padding:17px}.keyboard-roll-heading{display:flex;justify-content:space-between;gap:20px;align-items:end}.keyboard-roll-heading h2{margin:3px 0;font-size:20px}.keyboard-roll-heading>span{max-width:420px;color:var(--muted);font-size:9px}.keyboard-bars{display:grid;gap:7px;margin-top:14px}.keyboard-bars article{display:grid;grid-template-columns:66px 1fr;min-height:54px;border:1px solid #302b34;background:#111012}.keyboard-bars article.selected{border-color:var(--amber)}.bar-selector{border:0;border-right:1px solid #302b34;background:#171319;color:var(--muted);font:500 8px DM Mono;cursor:pointer}.keyboard-bars article.selected .bar-selector{background:#35263f;color:var(--amber)}.keyboard-bars article>div{position:relative;overflow:hidden}.keyboard-event{position:absolute;top:7px;transform:translateX(-2px);display:grid;min-width:62px;max-width:92px;padding:6px 7px;border:1px solid #5c4867;background:#2c2132;color:var(--ink);text-align:left;cursor:pointer;z-index:2}.keyboard-event b{font:500 7px DM Mono;color:var(--amber)}.keyboard-event small{font-size:7px;white-space:nowrap}.keyboard-event.tonewheel_organ{background:#253129;border-color:#466451}.keyboard-event.electric_piano{background:#1f2b3b;border-color:#415b76}.keyboard-event.celeste{background:#303343;border-color:#5a6280}.keyboard-event.locked{outline:1px solid #fff}.keyboard-analysis{display:grid;grid-template-columns:160px 1fr;align-items:center;gap:24px;margin-top:13px;padding:17px}.keyboard-analysis strong{display:block;color:var(--amber);font:500 48px DM Mono}.keyboard-analysis span{color:var(--muted);font-size:9px}.keyboard-analysis dl{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0}.keyboard-analysis dl>div{padding:9px;border:1px solid var(--line);background:#11100e}.keyboard-analysis dt{font:500 7px DM Mono;color:var(--muted)}.keyboard-analysis dd{margin:4px 0 0;color:var(--ink);font:500 14px DM Mono}.keyboard-library{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:13px;padding:14px}.keyboard-library>div{display:flex;align-items:end;gap:7px}.keyboard-library label{flex:1;color:var(--muted);font:500 8px DM Mono}.keyboard-library select{display:block;width:100%;margin-top:5px}.keyboard-library button{height:34px}.detroit-keyboard-control.compact{display:block;padding:0;border:0;background:transparent}.detroit-keyboard-control.compact .keyboard-style-heading p{margin-bottom:0}.detroit-keyboard-control.compact .keyboard-blend-controls{margin-top:8px;padding-top:7px}
-@media(max-width:900px){.keyboard-transport{grid-template-columns:repeat(2,1fr)}.keyboard-harmony{grid-column:1/-1}.keyboard-library{grid-template-columns:1fr}}
-@media(max-width:650px){.detroit-keyboard-control{grid-template-columns:1fr}.detroit-keyboard-control>small{grid-column:1}.keyboard-blend-controls{grid-template-columns:1fr}.keyboard-link,.keyboard-roll-heading{align-items:flex-start;flex-direction:column}.keyboard-analysis{grid-template-columns:1fr}.keyboard-analysis dl{grid-template-columns:repeat(2,1fr)}.keyboard-library>div{flex-wrap:wrap}.keyboard-event{min-width:48px;padding:5px 4px}.keyboard-event small{display:none}}
+.keyboard-app {
+  --amber: #cf9cff;
+  --lime: #78d6b2;
+  --blue: #8fb4ff;
+}
+
+.keyboard-brand {
+  width: 46px;
+  background: #cf9cff;
+  color: #1b1022;
+  font-size: 8px;
+}
+
+.keyboard-transport {
+  display: grid;
+  grid-template-columns: 90px 90px 90px 110px minmax(260px, 1fr);
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.keyboard-transport label,
+.keyboard-library label {
+  color: var(--muted);
+  font: 500 9px DM Mono;
+  letter-spacing: .1em;
+}
+
+.keyboard-transport input,
+.keyboard-transport select {
+  display: block;
+  width: 100%;
+  height: 37px;
+  margin-top: 6px;
+  padding: 0 9px;
+  border: 1px solid #39342e;
+  background: #11100e;
+  color: var(--ink);
+}
+
+.detroit-keyboard-control {
+  display: grid;
+  grid-template-columns: 230px 1fr;
+  gap: 12px 18px;
+  padding: 14px;
+  border: 1px solid #513c60;
+  background: #18131c;
+}
+
+.keyboard-style-heading label {
+  display: grid;
+  gap: 6px;
+  color: var(--amber);
+  font: 500 9px DM Mono;
+  letter-spacing: .1em;
+}
+
+.keyboard-style-heading select { margin: 0; }
+.keyboard-style-heading p {
+  margin: 7px 0 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+.detroit-keyboard-control ul {
+  display: flex;
+  align-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.detroit-keyboard-control li {
+  padding: 6px 8px;
+  border: 1px solid #59436a;
+  color: var(--ink);
+  font: 500 9px DM Mono;
+}
+
+.detroit-keyboard-control > small {
+  grid-column: 1 / -1;
+  color: #8f8497;
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.keyboard-blend-controls {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #3b3042;
+}
+
+.keyboard-blend-controls label {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 5px;
+  color: var(--muted);
+  font: 500 9px DM Mono;
+}
+
+.keyboard-blend-controls input {
+  grid-column: 1 / -1;
+  width: 100%;
+  accent-color: var(--amber);
+}
+
+.keyboard-blend-controls b { color: var(--ink); }
+.keyboard-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+.keyboard-link span { color: var(--muted); font-size: 10px; }
+
+.keyboard-notice,
+.keyboard-pending {
+  margin: 8px 0 0;
+  font: 500 10px/1.55 DM Mono;
+}
+.keyboard-notice { color: var(--amber); }
+.keyboard-pending {
+  padding: 8px 10px;
+  border-left: 2px solid var(--amber);
+  background: #211a25;
+  color: #c6b9cb;
+}
+
+.keyboard-candidates .candidate.active {
+  border-color: var(--amber);
+  box-shadow: inset 3px 0 var(--amber);
+}
+
+.keyboard-roll {
+  margin-top: 13px;
+  padding: 17px;
+  overflow-x: auto;
+}
+.keyboard-roll-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 20px;
+}
+.keyboard-roll-heading h2 { margin: 3px 0; font-size: 20px; }
+.keyboard-roll-heading > span { max-width: 420px; color: var(--muted); font-size: 10px; }
+
+.keyboard-bars {
+  display: grid;
+  gap: 7px;
+  min-width: 680px;
+  margin-top: 14px;
+}
+.keyboard-bars article {
+  display: grid;
+  grid-template-columns: 66px 1fr;
+  min-height: 54px;
+  border: 1px solid #302b34;
+  background: #111012;
+}
+.keyboard-bars article.selected { border-color: var(--amber); }
+.bar-selector {
+  border: 0;
+  border-right: 1px solid #302b34;
+  background: #171319;
+  color: var(--muted);
+  font: 500 9px DM Mono;
+  cursor: pointer;
+}
+.keyboard-bars article.selected .bar-selector { background: #35263f; color: var(--amber); }
+.keyboard-bars article > div { position: relative; overflow: hidden; }
+
+.keyboard-event {
+  position: absolute;
+  top: 7px;
+  z-index: 2;
+  display: grid;
+  min-width: 70px;
+  min-height: 38px;
+  max-width: 104px;
+  padding: 6px 7px;
+  border: 1px solid #5c4867;
+  background: #2c2132;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+.keyboard-event.edge { transform: translateX(-100%); }
+.keyboard-event b { color: var(--amber); font: 500 8px DM Mono; }
+.keyboard-event small { font-size: 8px; white-space: nowrap; }
+.keyboard-event.tonewheel_organ { border-color: #466451; background: #253129; }
+.keyboard-event.electric_piano { border-color: #415b76; background: #1f2b3b; }
+.keyboard-event.celeste { border-color: #5a6280; background: #303343; }
+.keyboard-event.locked { outline: 2px solid #fff; }
+
+.keyboard-analysis {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  align-items: center;
+  gap: 24px;
+  margin-top: 13px;
+  padding: 17px;
+}
+.keyboard-analysis strong { display: block; color: var(--amber); font: 500 48px DM Mono; }
+.keyboard-analysis span { color: var(--muted); font-size: 10px; }
+.keyboard-analysis dl { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0; }
+.keyboard-analysis dl > div { padding: 9px; border: 1px solid var(--line); background: #11100e; }
+.keyboard-analysis dt { color: var(--muted); font: 500 9px DM Mono; }
+.keyboard-analysis dd { margin: 4px 0 0; color: var(--ink); font: 500 14px DM Mono; }
+
+.keyboard-library {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 13px;
+  padding: 14px;
+}
+.keyboard-library > div { display: flex; align-items: end; gap: 7px; }
+.keyboard-library label { flex: 1; }
+.keyboard-library select { display: block; width: 100%; margin-top: 5px; }
+.keyboard-library button { min-height: 38px; }
+
+.detroit-keyboard-control.compact { display: block; padding: 0; border: 0; background: transparent; }
+.detroit-keyboard-control.compact .keyboard-style-heading p { margin-bottom: 0; }
+.detroit-keyboard-control.compact .keyboard-blend-controls { margin-top: 8px; padding-top: 7px; }
+
+@media (max-width: 900px) {
+  .keyboard-transport { grid-template-columns: repeat(2, 1fr); }
+  .keyboard-harmony { grid-column: 1 / -1; }
+  .keyboard-library { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 650px) {
+  .detroit-keyboard-control { grid-template-columns: 1fr; }
+  .detroit-keyboard-control > small { grid-column: 1; }
+  .keyboard-blend-controls { grid-template-columns: 1fr; }
+  .keyboard-link,
+  .keyboard-roll-heading { align-items: flex-start; flex-direction: column; }
+  .keyboard-analysis { grid-template-columns: 1fr; }
+  .keyboard-analysis dl { grid-template-columns: repeat(2, 1fr); }
+  .keyboard-library > div { flex-wrap: wrap; }
+  .keyboard-event { min-height: 44px; }
+}

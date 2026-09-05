@@ -3303,6 +3303,16 @@ export interface components {
              * @default 0
              */
             revision: number;
+            /**
+             * Keyboard Generation Version
+             * @default keyboard-performance-v1
+             */
+            keyboard_generation_version: string;
+            /**
+             * Keyboard Analysis Version
+             * @default keyboard-analysis-v1
+             */
+            keyboard_analysis_version: string;
             detroit_keyboard?: components["schemas"]["DetroitKeyboardSettings"];
             /** Generation Notes */
             generation_notes?: string[];
@@ -3341,6 +3351,16 @@ export interface components {
              * @default 0
              */
             revision: number;
+            /**
+             * Keyboard Generation Version
+             * @default keyboard-performance-v1
+             */
+            keyboard_generation_version: string;
+            /**
+             * Keyboard Analysis Version
+             * @default keyboard-analysis-v1
+             */
+            keyboard_analysis_version: string;
             detroit_keyboard?: components["schemas"]["DetroitKeyboardSettings"];
             /** Generation Notes */
             generation_notes?: string[];

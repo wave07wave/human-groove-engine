@@ -10,3 +10,11 @@ export function claimPreview(owner: PreviewOwner, stop: () => void) {
 export function releasePreview(owner: PreviewOwner) {
   if (active?.owner === owner) active = null
 }
+
+export function stopActivePreview(owner: PreviewOwner) {
+  if (active?.owner === owner) active.stop()
+}
+
+export function isActivePreview(owner: PreviewOwner) {
+  return active?.owner === owner
+}

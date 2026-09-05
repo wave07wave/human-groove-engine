@@ -25,6 +25,10 @@ KeyboardInstrument = Literal[
 KeyboardRole = Literal["anchor", "comp", "answer", "fill", "grace", "resolution"]
 KeyboardHand = Literal["left", "right", "both"]
 KeyboardArticulation = Literal["staccato", "normal", "tenuto", "legato"]
+LEGACY_KEYBOARD_GENERATION_VERSION = "keyboard-performance-v1"
+KEYBOARD_GENERATION_VERSION = "keyboard-performance-v2"
+LEGACY_KEYBOARD_ANALYSIS_VERSION = "keyboard-analysis-v1"
+KEYBOARD_ANALYSIS_VERSION = "keyboard-analysis-v2"
 
 
 class KeyboardBlend(UnitModel):
@@ -82,7 +86,9 @@ class KeyboardEvent(UnitModel):
             raise ValueError("keyboard pitch must be a MIDI note")
         if any(not 1 <= velocity <= 127 for velocity in self.velocities):
             raise ValueError("keyboard velocity must be between 1 and 127")
-        object.__setattr__(self, "pitches", sorted(self.pitches))
+        ordered = sorted(zip(self.pitches, self.velocities, strict=True))
+        object.__setattr__(self, "pitches", [pitch for pitch, _ in ordered])
+        object.__setattr__(self, "velocities", [velocity for _, velocity in ordered])
         return self
 
     @property
@@ -117,6 +123,8 @@ class KeyboardPatternMetadata(UnitModel):
     master_seed: int = Field(ge=0)
     candidate_index: int = Field(default=0, ge=0)
     revision: int = Field(default=0, ge=0)
+    keyboard_generation_version: str = LEGACY_KEYBOARD_GENERATION_VERSION
+    keyboard_analysis_version: str = LEGACY_KEYBOARD_ANALYSIS_VERSION
     detroit_keyboard: DetroitKeyboardSettings = Field(
         default_factory=DetroitKeyboardSettings
     )
@@ -164,7 +172,7 @@ class KeyboardGenerateRequest(UnitModel):
     bpm: float = Field(100, ge=30, le=300)
     bars: int = Field(4, ge=1, le=64)
     meter: MeterDefinition = Field(default_factory=lambda: MeterDefinition.from_name("4/4"))
-    harmony: str = "Dm7 | G7 | Cmaj7 | A7"
+    harmony: str = Field("Dm7 | G7 | Cmaj7 | A7", min_length=1, max_length=4096)
     key: str | None = "C"
     mode: ScaleMode = ScaleMode.MAJOR
     seed: int = Field(42, ge=0)
@@ -173,6 +181,16 @@ class KeyboardGenerateRequest(UnitModel):
         default_factory=DetroitKeyboardSettings
     )
     rhythm_context: KeyboardRhythmContext = Field(default_factory=KeyboardRhythmContext)
+
+    @model_validator(mode="after")
+    def bounded_generation_context(self) -> "KeyboardGenerateRequest":
+        context = self.rhythm_context
+        if any(
+            len(ticks) > 8192
+            for ticks in (context.kick_ticks, context.snare_ticks, context.bass_ticks)
+        ):
+            raise ValueError("keyboard generation rhythm context is too large")
+        return self
 
 
 class KeyboardGenerateResponse(UnitModel):

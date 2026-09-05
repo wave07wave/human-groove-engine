@@ -2,6 +2,8 @@ import type { DetroitKeyboardSettings, KeyboardStyleMode } from '../types/genera
 import {
   DETROIT_KEYBOARD_DISCLAIMER,
   DETROIT_KEYBOARD_OPTIONS,
+  normalizedKeyboardBlend,
+  withKeyboardBlendInfluence,
 } from '../utils/detroitKeyboard'
 
 type Props = {
@@ -19,8 +21,9 @@ const blendFields = [
 export function DetroitKeyboardControl({ value, onChange, compact = false }: Props) {
   const selected = DETROIT_KEYBOARD_OPTIONS.find(option => option.value === value.mode)
     ?? DETROIT_KEYBOARD_OPTIONS[0]
+  const normalizedBlend = normalizedKeyboardBlend(value.blend)
   const updateBlend = (key: keyof DetroitKeyboardSettings['blend'], amount: number) => {
-    onChange({ ...value, blend: { ...value.blend, [key]: amount } })
+    onChange(withKeyboardBlendInfluence(value, key, amount))
   }
 
   return <section className={compact ? 'detroit-keyboard-control compact' : 'detroit-keyboard-control'}>
@@ -49,7 +52,7 @@ export function DetroitKeyboardControl({ value, onChange, compact = false }: Pro
           value={value.blend[key]}
           onChange={event => updateBlend(key, Number(event.target.value))}
         />
-        <b>{Math.round(value.blend[key] * 100)}</b>
+        <b>{Math.round(normalizedBlend[key] * 100)}%</b>
       </label>)}
     </div>}
     {!compact && <small>{DETROIT_KEYBOARD_DISCLAIMER}</small>}

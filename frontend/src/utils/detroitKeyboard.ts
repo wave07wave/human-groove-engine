@@ -5,6 +5,26 @@ export const DEFAULT_DETROIT_KEYBOARD: DetroitKeyboardSettings = {
   blend: { earl: 1 / 3, joe: 1 / 3, johnny: 1 / 3 },
 }
 
+export function withKeyboardBlendInfluence(
+  settings: DetroitKeyboardSettings,
+  key: keyof DetroitKeyboardSettings['blend'],
+  amount: number,
+): DetroitKeyboardSettings {
+  const blend = { ...settings.blend, [key]: amount }
+  if (blend.earl + blend.joe + blend.johnny <= 0) blend[key] = 0.01
+  return { ...settings, blend }
+}
+
+export function normalizedKeyboardBlend(blend: DetroitKeyboardSettings['blend']) {
+  const total = blend.earl + blend.joe + blend.johnny
+  if (total <= 0) return { earl: 1 / 3, joe: 1 / 3, johnny: 1 / 3 }
+  return {
+    earl: blend.earl / total,
+    joe: blend.joe / total,
+    johnny: blend.johnny / total,
+  }
+}
+
 export const DETROIT_KEYBOARD_OPTIONS: {
   value: KeyboardStyleMode
   label: string

@@ -17,6 +17,7 @@ import { QuickComposer } from './components/QuickComposer'
 import { StepGrid } from './components/StepGrid'
 import { TasteTrainer } from './components/TasteTrainer'
 import { DRUM_SOUND_OPTIONS, type DrumSoundId } from './audio/drumKitProfile'
+import { stopActivePreview } from './audio/previewCoordinator'
 import { useHistory } from './hooks/useHistory'
 import type { BassPattern, DetroitSoulSettings, GenerateRequest, GrooveDNA, GrooveEvent, GrooveIntent, GroovePattern, GroovePreferenceSummary, Instrument, KeyboardPattern, PresetsResponse } from './types/generated'
 import { DEFAULT_DETROIT_SOUL } from './utils/detroitSoul'
@@ -153,12 +154,22 @@ export default function App() {
   const [sharedKeyboard, setSharedKeyboard] = useState<KeyboardPattern | null>(null)
   const [mixPlaying, setMixPlaying] = useState(false)
   const [mixError, setMixError] = useState('')
+  const changeMode = (next: 'easy' | 'detail') => {
+    stopActivePreview(engine)
+    stopActivePreview('mix')
+    setMixPlaying(false)
+    setMode(next)
+  }
+  const changeEngine = (next: 'groove' | 'bass' | 'keyboard') => {
+    stopActivePreview(engine)
+    setEngine(next)
+  }
   return <>
-    <nav className="engine-switch" aria-label="Workspace selection">
-    <div className="mode-switch" aria-label="モード選択"><button className={mode === 'easy' ? 'active' : ''} onClick={() => setMode('easy')}>かんたん</button><button className={mode === 'detail' ? 'active' : ''} onClick={() => setMode('detail')}>詳細</button></div>
-      {mode === 'detail' && <div className="engine-tabs"><button className={engine === 'groove' ? 'active' : ''} onClick={() => setEngine('groove')}>GROOVE</button><button className={engine === 'bass' ? 'active' : ''} onClick={() => setEngine('bass')}>BASS</button><button className={engine === 'keyboard' ? 'active' : ''} onClick={() => setEngine('keyboard')}>KEYS</button></div>}
+    <nav className="workspace-switch" aria-label="Workspace selection">
+    <div className="mode-switch" aria-label="モード選択"><button aria-pressed={mode === 'easy'} className={mode === 'easy' ? 'active' : ''} onClick={() => changeMode('easy')}>かんたん</button><button aria-pressed={mode === 'detail'} className={mode === 'detail' ? 'active' : ''} onClick={() => changeMode('detail')}>詳細</button></div>
+      {mode === 'detail' && <div className="engine-tabs"><button aria-pressed={engine === 'groove'} className={engine === 'groove' ? 'active' : ''} onClick={() => changeEngine('groove')}>GROOVE</button><button aria-pressed={engine === 'bass'} className={engine === 'bass' ? 'active' : ''} onClick={() => changeEngine('bass')}>BASS</button><button aria-pressed={engine === 'keyboard'} className={engine === 'keyboard' ? 'active' : ''} onClick={() => changeEngine('keyboard')}>KEYS</button></div>}
     </nav>
-    {sharedGroove && sharedBass && <aside className="mix-transport" aria-label="Groove、Bass、Keysの同時再生"><span>{sharedKeyboard ? 'Groove + Bass + Keys' : 'Groove + Bass'}</span><button className={mixPlaying ? 'play active' : 'play'} onClick={() => { setMixError(''); void import('./audio/mixPreview').then(module=>module.toggleMixPreview(sharedGroove,sharedBass,sharedKeyboard,setMixPlaying)).catch(cause => setMixError(`音声を開始できません: ${String(cause)}`)) }}>{mixPlaying ? '■ 停止' : '▶ 再生'}</button>{mixError && <small role="alert">{mixError}</small>}</aside>}
+    {mode === 'detail' && sharedGroove && sharedBass && <aside className="mix-transport" aria-label="Groove、Bass、Keysの同時再生"><span>{sharedKeyboard ? 'Groove + Bass + Keys' : 'Groove + Bass'}</span><button className={mixPlaying ? 'play active' : 'play'} onClick={() => { setMixError(''); void import('./audio/mixPreview').then(module=>module.toggleMixPreview(sharedGroove,sharedBass,sharedKeyboard,setMixPlaying)).catch(cause => setMixError(`音声を開始できません: ${String(cause)}`)) }}>{mixPlaying ? '■ 停止' : '▶ 再生'}</button>{mixError && <small role="alert">{mixError}</small>}</aside>}
     {mode === 'easy' ? <QuickComposer groove={sharedGroove} bass={sharedBass} keyboard={sharedKeyboard} onReady={(groove, bass, keyboard) => { setSharedGroove(groove); setSharedBass(bass); setSharedKeyboard(keyboard) }} onOpenDetails={() => setMode('detail')} /> : <>
       <div hidden={engine !== 'groove'}><GrooveApp onPatternChange={setSharedGroove} externalPattern={sharedGroove} /></div>
       <div hidden={engine !== 'bass'}><BassApp groovePattern={sharedGroove} externalPattern={sharedBass} onGrooveUpdate={setSharedGroove} onBassPatternChange={setSharedBass} /></div>
