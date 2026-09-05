@@ -98,7 +98,10 @@ def export_keyboard_midi(pattern: KeyboardPattern) -> bytes:
                     f"keyboard_analysis={pattern.metadata.keyboard_analysis_version};"
                     f"detroit_keyboard={settings.mode};"
                     f"blend={settings.blend.earl:.4f},{settings.blend.joe:.4f},"
-                    f"{settings.blend.johnny:.4f}"
+                    f"{settings.blend.johnny:.4f};"
+                    f"bill_evans_profile={settings.bill_evans.profile};"
+                    f"bill_evans_context={settings.bill_evans.performance_context};"
+                    f"chord_retention={settings.bill_evans.chord_retention}"
                 ),
             ),
         ),
@@ -135,8 +138,41 @@ def export_keyboard_midi(pattern: KeyboardPattern) -> bytes:
                 )
             )
             track_events.append(
-                (stop, 1, mido.Message("note_off", channel=channel, note=pitch, velocity=0))
+                (
+                    stop,
+                    1,
+                    mido.Message(
+                        "note_off", channel=channel, note=pitch, velocity=0
+                    ),
+                )
             )
+        if (
+            instrument == "acoustic_piano"
+            and pattern.metadata.detroit_keyboard.mode == "bill_evans"
+        ):
+            # Pedal follows the phrase envelope, rather than note-by-note
+            # randomness.  It is lifted at barlines so harmonic changes remain clear.
+            for bar in range(pattern.bars):
+                start = bar * pattern.meter.bar_ticks
+                stop = min(final_tick, start + round(pattern.meter.bar_ticks * 0.88))
+                track_events.append(
+                    (
+                        start,
+                        1,
+                        mido.Message(
+                            "control_change", channel=channel, control=64, value=92
+                        ),
+                    )
+                )
+                track_events.append(
+                    (
+                        stop,
+                        1,
+                        mido.Message(
+                            "control_change", channel=channel, control=64, value=0
+                        ),
+                    )
+                )
         track_events.append((final_tick, 3, mido.MetaMessage("end_of_track")))
         midi.tracks.append(mido.MidiTrack(_delta_messages(track_events)))
 

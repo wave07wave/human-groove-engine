@@ -115,7 +115,7 @@ it('offers all three Detroit keyboardists and sends the selected style with rhyt
   const keyboardist = await screen.findByLabelText('Detroit Soul キーボード') as HTMLSelectElement
 
   expect(Array.from(keyboardist.options).map(option => option.value)).toEqual([
-    'standard', 'earl', 'joe', 'johnny', 'blend',
+    'bill_evans', 'standard', 'earl', 'joe', 'johnny', 'blend',
   ])
   fireEvent.change(keyboardist, { target: { value: 'johnny' } })
   fireEvent.click(screen.getByRole('button', { name: 'まとめて作成' }))
@@ -124,6 +124,11 @@ it('offers all three Detroit keyboardists and sends the selected style with rhyt
   expect(mocks.keyboardGenerate.mock.calls[0][0].detroit_keyboard).toEqual({
     mode: 'johnny',
     blend: { earl: 1 / 3, joe: 1 / 3, johnny: 1 / 3 },
+    bill_evans: {
+      profile: 'lyrical_ballad',
+      chord_retention: 2,
+      performance_context: 'solo',
+    },
   })
   expect(mocks.keyboardGenerate.mock.calls[0][0].rhythm_context).toEqual({
     kick_ticks: [], snare_ticks: [], bass_ticks: [],

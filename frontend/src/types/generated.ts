@@ -157,9 +157,11 @@ export type BassPresetsResponse = {
   user: Record<string, BassIntent>
 }
 
-export type KeyboardStyleMode = 'standard' | 'earl' | 'joe' | 'johnny' | 'blend'
+export type KeyboardStyleMode = 'standard' | 'earl' | 'joe' | 'johnny' | 'bill_evans' | 'blend'
 export type KeyboardBlend = { earl: number, joe: number, johnny: number }
-export type DetroitKeyboardSettings = { mode: KeyboardStyleMode, blend: KeyboardBlend }
+export type BillEvansProfile = 'lyrical_ballad' | 'interactive_trio' | 'solo_reflective' | 'waltz' | 'uptempo'
+export type BillEvansSettings = { profile: BillEvansProfile, chord_retention: number, performance_context: 'solo' | 'trio_with_bass' | 'full_trio' }
+export type DetroitKeyboardSettings = { mode: KeyboardStyleMode, blend: KeyboardBlend, bill_evans?: BillEvansSettings }
 export type KeyboardInstrument = Schema['KeyboardEvent']['instrument']
 export type KeyboardEvent = Schema['KeyboardEvent']
 export type KeyboardAnalysis = Schema['KeyboardAnalysis']

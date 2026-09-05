@@ -18,7 +18,11 @@ class UnitModel(BaseModel):
     model_config = ConfigDict(validate_assignment=True)
 
 
-KeyboardStyleMode = Literal["standard", "earl", "joe", "johnny", "blend"]
+KeyboardStyleMode = Literal["standard", "earl", "joe", "johnny", "bill_evans", "blend"]
+BillEvansProfile = Literal[
+    "lyrical_ballad", "interactive_trio", "solo_reflective", "waltz", "uptempo"
+]
+BillEvansPerformanceContext = Literal["solo", "trio_with_bass", "full_trio"]
 KeyboardInstrument = Literal[
     "acoustic_piano", "tonewheel_organ", "electric_piano", "celeste"
 ]
@@ -43,11 +47,20 @@ class KeyboardBlend(UnitModel):
         return self
 
 
+class BillEvansSettings(UnitModel):
+    """Controls for the modern-jazz piano performance language."""
+
+    profile: BillEvansProfile = "lyrical_ballad"
+    chord_retention: int = Field(default=2, ge=0, le=4)
+    performance_context: BillEvansPerformanceContext = "solo"
+
+
 class DetroitKeyboardSettings(UnitModel):
     """Independent, attribution-safe keyboard performance-language layer."""
 
     mode: KeyboardStyleMode = "standard"
     blend: KeyboardBlend = Field(default_factory=KeyboardBlend)
+    bill_evans: BillEvansSettings = Field(default_factory=BillEvansSettings)
 
 
 class KeyboardRhythmContext(UnitModel):

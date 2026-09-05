@@ -86,6 +86,28 @@ def test_keyboard_styles_are_deterministic_and_seeded() -> None:
     assert len(signatures) == 10
 
 
+def test_bill_evans_piano_profile_is_deterministic_and_exports_pedal() -> None:
+    request = KeyboardGenerateRequest(
+        bars=8,
+        seed=902,
+        harmony="Cmaj7",
+        detroit_keyboard=DetroitKeyboardSettings(mode="bill_evans"),
+    )
+    pattern = generate_keyboard_pattern(request)
+    duplicate = generate_keyboard_pattern(request)
+    assert pattern.model_dump_json() == duplicate.model_dump_json()
+    assert pattern.name.startswith("Bill Evans Piano")
+    assert all(event.instrument == "acoustic_piano" for event in pattern.events)
+    assert any("form-led modern-jazz" in note for note in pattern.metadata.generation_notes)
+
+    midi = mido.MidiFile(file=BytesIO(export_keyboard_midi(pattern)))
+    assert any(
+        message.type == "control_change" and message.control == 64
+        for track in midi.tracks
+        for message in track
+    )
+
+
 def test_three_keyboard_languages_have_statistically_distinct_results() -> None:
     standard = _averages("standard")
     earl = _averages("earl")
@@ -386,7 +408,14 @@ def test_keyboard_api_and_midi_contract(tmp_path, monkeypatch) -> None:
     monkeypatch.setattr(keyboard_api, "db", database)
     client = TestClient(app)
     capabilities = client.get("/api/v1/keyboard/capabilities").json()
-    assert capabilities["styles"] == ["standard", "earl", "joe", "johnny", "blend"]
+    assert capabilities["styles"] == [
+        "standard",
+        "earl",
+        "joe",
+        "johnny",
+        "bill_evans",
+        "blend",
+    ]
     assert capabilities["external_samples"] is False
     assert capabilities["source_phrases"] is False
 

@@ -3,6 +3,7 @@ import type { DetroitKeyboardSettings, KeyboardStyleMode } from '../types/genera
 export const DEFAULT_DETROIT_KEYBOARD: DetroitKeyboardSettings = {
   mode: 'standard',
   blend: { earl: 1 / 3, joe: 1 / 3, johnny: 1 / 3 },
+  bill_evans: { profile: 'lyrical_ballad', chord_retention: 2, performance_context: 'solo' },
 }
 
 export function withKeyboardBlendInfluence(
@@ -31,6 +32,12 @@ export const DETROIT_KEYBOARD_OPTIONS: {
   description: string
   features: string[]
 }[] = [
+  {
+    value: 'bill_evans',
+    label: 'Bill Evans Piano',
+    description: '歌う上声と滑らかな声部進行を軸に、余白とペダルを含むモダン・ジャズ・ピアノを作ります。',
+    features: ['ルートレス／オープン・ヴォイシング', 'モチーフを変奏', '曲線に沿う強弱と音域', 'アコースティック・ピアノ専用'],
+  },
   {
     value: 'standard',
     label: '標準',

@@ -52,7 +52,7 @@ it('generates the selected keyboardist style in the detailed Keys workspace', as
   const style = screen.getByLabelText('Detroit Soul キーボード') as HTMLSelectElement
 
   expect(Array.from(style.options).map(option => option.value)).toEqual([
-    'standard', 'earl', 'joe', 'johnny', 'blend',
+    'bill_evans', 'standard', 'earl', 'joe', 'johnny', 'blend',
   ])
   fireEvent.change(style, { target: { value: 'joe' } })
   fireEvent.click(screen.getByRole('button', { name: 'Keysを作成' }))
@@ -77,7 +77,24 @@ it('shows and sends the three influence controls in blend mode', async () => {
 
   await waitFor(() => expect(mocks.generate).toHaveBeenCalledTimes(1))
   expect(mocks.generate.mock.calls[0][0].detroit_keyboard).toEqual({
-    mode: 'blend', blend: { earl: .6, joe: .25, johnny: .15 },
+    mode: 'blend',
+    blend: { earl: .6, joe: .25, johnny: .15 },
+    bill_evans: { profile: 'lyrical_ballad', chord_retention: 2, performance_context: 'solo' },
+  })
+})
+
+it('sends the Bill Evans Piano performance settings', async () => {
+  render(<KeyboardApp groovePattern={null} bassPattern={null} />)
+  fireEvent.change(screen.getByLabelText('Detroit Soul キーボード'), { target: { value: 'bill_evans' } })
+  fireEvent.change(screen.getByLabelText('Bill Evans 演奏プロファイル'), { target: { value: 'waltz' } })
+  fireEvent.change(screen.getByLabelText('Bill Evans 演奏編成'), { target: { value: 'trio_with_bass' } })
+  fireEvent.change(screen.getByLabelText('Bill Evans コード維持'), { target: { value: '3' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Keysを作成' }))
+
+  await waitFor(() => expect(mocks.generate).toHaveBeenCalledTimes(1))
+  expect(mocks.generate.mock.calls[0][0].detroit_keyboard).toMatchObject({
+    mode: 'bill_evans',
+    bill_evans: { profile: 'waltz', performance_context: 'trio_with_bass', chord_retention: 3 },
   })
 })
 

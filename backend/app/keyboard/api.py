@@ -125,7 +125,14 @@ def import_pattern(exchange: KeyboardPatternExchange) -> KeyboardPattern:
 @router.get("/capabilities")
 def capabilities() -> dict:
     return {
-        "styles": ["standard", "earl", "joe", "johnny", "blend"],
+        "styles": ["standard", "earl", "joe", "johnny", "bill_evans", "blend"],
+        "bill_evans_profiles": [
+            "lyrical_ballad",
+            "interactive_trio",
+            "solo_reflective",
+            "waltz",
+            "uptempo",
+        ],
         "blend_controls": ["earl", "joe", "johnny"],
         "deterministic_generation": True,
         "bpm_compensation": True,

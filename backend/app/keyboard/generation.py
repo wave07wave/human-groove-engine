@@ -80,6 +80,33 @@ STANDARD_PROFILE = KeyboardPerformanceProfile(
 )
 
 STYLE_PROFILES = {
+    "bill_evans": KeyboardPerformanceProfile(
+        # A spacious, voice-led modern-jazz piano language.  Values here are
+        # performance controls, not copied phrases or recordings.
+        density=0.34,
+        offbeat_probability=0.46,
+        triplet_probability=0.16,
+        anticipation_probability=0.16,
+        fill_probability=0.20,
+        grace_probability=0.025,
+        left_hand_probability=0.34,
+        melodic_probability=0.56,
+        open_voicing_probability=0.82,
+        staccato_probability=0.06,
+        tenuto_probability=0.70,
+        context_lock=0.28,
+        context_complement=0.62,
+        velocity_center=72,
+        velocity_spread=6,
+        timing_center_us=700,
+        timing_spread_us=900,
+        register_center=66,
+        duration_ratio=0.84,
+        ending_pickup_probability=0.30,
+        ending_triplet_probability=0.30,
+        resolution_duration_ratio=0.94,
+        resolution_accent=4,
+    ),
     "earl": KeyboardPerformanceProfile(
         density=0.58,
         offbeat_probability=0.52,
@@ -158,6 +185,12 @@ STYLE_PROFILES = {
 }
 
 INSTRUMENT_WEIGHTS: dict[str, dict[KeyboardInstrument, float]] = {
+    "bill_evans": {
+        "acoustic_piano": 1.0,
+        "tonewheel_organ": 0.0,
+        "electric_piano": 0.0,
+        "celeste": 0.0,
+    },
     "standard": {
         "acoustic_piano": 0.72,
         "tonewheel_organ": 0.12,
@@ -240,6 +273,33 @@ def _style_weights(settings: DetroitKeyboardSettings) -> dict[str, float]:
     }
 
 
+def _bill_evans_profile(
+    base: KeyboardPerformanceProfile, settings: DetroitKeyboardSettings, bpm: float
+) -> KeyboardPerformanceProfile:
+    """Apply the five piano contexts without introducing random humanization."""
+    values = {field.name: getattr(base, field.name) for field in fields(base)}
+    profile = settings.bill_evans.profile
+    if profile == "interactive_trio":
+        values.update(density=0.42, offbeat_probability=0.56, left_hand_probability=0.17,
+                      melodic_probability=0.48, context_complement=0.78, duration_ratio=0.70)
+    elif profile == "solo_reflective":
+        values.update(density=0.38, left_hand_probability=0.62, melodic_probability=0.44,
+                      open_voicing_probability=0.86, register_center=62, duration_ratio=0.90)
+    elif profile == "waltz":
+        values.update(density=0.40, offbeat_probability=0.54, triplet_probability=0.26,
+                      left_hand_probability=0.48, melodic_probability=0.52)
+    elif profile == "uptempo":
+        values.update(density=0.40, triplet_probability=0.09, fill_probability=0.12,
+                      staccato_probability=0.16, tenuto_probability=0.42,
+                      duration_ratio=0.58, timing_spread_us=480)
+    if settings.bill_evans.performance_context != "solo":
+        values["left_hand_probability"] *= 0.52
+    if bpm >= 150:
+        values["density"] *= 0.88
+        values["duration_ratio"] *= 0.82
+    return KeyboardPerformanceProfile(**values)
+
+
 def profile_for_settings(
     settings: DetroitKeyboardSettings, bpm: float
 ) -> tuple[KeyboardPerformanceProfile, dict[KeyboardInstrument, float]]:
@@ -263,6 +323,8 @@ def profile_for_settings(
     )
     values["timing_spread_us"] *= max(0.58, min(1.20, (100 / max(30, bpm)) ** 0.5))
     profile = KeyboardPerformanceProfile(**values)
+    if settings.mode == "bill_evans":
+        profile = _bill_evans_profile(profile, settings, bpm)
     instruments = {
         instrument: sum(
             weights.get(name, 0) * INSTRUMENT_WEIGHTS[name][instrument] for name in weights
@@ -304,6 +366,7 @@ def _voicing(
     rng,
     role: str,
     previous_top: int | None,
+    bill_evans: bool = False,
 ) -> tuple[list[int], str]:
     root, pitch_classes = _pitch_classes(timeline, tick)
     melodic = role in {"fill", "answer"} and rng.random() < profile.melodic_probability
@@ -311,8 +374,12 @@ def _voicing(
     selected = pitch_classes[:target_count]
     while len(selected) < target_count:
         selected.append(pitch_classes[len(selected) % len(pitch_classes)])
+    # In the piano profile, the 3rd/7th are retained while colour tones sit
+    # above them.  The top voice is then moved by the smallest available
+    # interval, so adjacent voicings read as a line rather than chord blocks.
+    center = profile.register_center - (3 if bill_evans and role == "anchor" else 0)
     pitches = [
-        _nearest_pitch(pc, profile.register_center + index * 2.5)
+        _nearest_pitch(pc, center + index * (3.8 if bill_evans else 2.5))
         for index, pc in enumerate(selected)
     ]
     pitches = sorted(set(pitches))
@@ -327,12 +394,17 @@ def _voicing(
         pitches = [pitch]
     elif rng.random() < profile.open_voicing_probability and len(pitches) >= 3:
         pitches[-1] = min(96, pitches[-1] + 12)
+        if bill_evans and len(pitches) >= 4:
+            pitches[1] = max(48, pitches[1] - 7)
         pitches = sorted(set(pitches))
 
     left_hand = rng.random() < profile.left_hand_probability
     if left_hand:
         low_root = _nearest_pitch(root, profile.register_center - 15, 32, 64)
-        pitches = sorted(set([low_root, *pitches]))
+        # Rootless voicings are preferred when an acoustic bass is present;
+        # solo contexts retain a low anchor often enough to keep the harmony clear.
+        use_root = not bill_evans or rng.random() < 0.62
+        pitches = sorted(set(([low_root] if use_root else []) + pitches))
         if profile.left_hand_probability > 0.7 and rng.random() < 0.42:
             octave = low_root + 12
             if octave not in pitches:
@@ -431,6 +503,7 @@ def _render_events(
     pattern_end = request.bars * request.meter.bar_ticks
     events: list[KeyboardEvent] = []
     previous_top: int | None = None
+    bill_evans = request.detroit_keyboard.mode == "bill_evans"
     primary_instrument = _instrument(
         instrument_weights, hrng.stream("keyboard-instrument", candidate)
     )
@@ -445,6 +518,7 @@ def _render_events(
             rng=rng,
             role=role,
             previous_top=previous_top,
+            bill_evans=bill_evans,
         )
         previous_top = pitches[-1]
         accent = (
@@ -456,6 +530,8 @@ def _render_events(
             if role == "answer"
             else 0
         )
+        phrase_position = (tick % (request.meter.bar_ticks * 4)) / (request.meter.bar_ticks * 4)
+        phrase_lift = 4 if bill_evans and 0.45 <= phrase_position <= 0.75 else 0
         velocities = [
             max(
                 24,
@@ -464,6 +540,7 @@ def _render_events(
                     round(
                         profile.velocity_center
                         + accent
+                        + phrase_lift
                         + rng.normal(0, profile.velocity_spread)
                     ),
                 ),
@@ -492,6 +569,8 @@ def _render_events(
         center = profile.timing_center_us
         if tick % PPQ != 0:
             center += 500 if profile.timing_center_us > 0 else -250
+        if bill_evans and role in {"fill", "answer"}:
+            center += 350
         micro = max(
             -MAX_MICROTIMING_US,
             min(MAX_MICROTIMING_US, round(center + rng.normal(0, profile.timing_spread_us))),
@@ -660,6 +739,7 @@ def generate_keyboard_pattern(
         "earl": "Earl-inspired",
         "joe": "Joe-inspired",
         "johnny": "Johnny-inspired",
+        "bill_evans": "Bill Evans Piano",
         "blend": "Detroit blend",
     }[request.detroit_keyboard.mode]
     fingerprint_payload = request.model_dump(mode="json", exclude={"candidate_count"})
@@ -685,7 +765,15 @@ def generate_keyboard_pattern(
             keyboard_analysis_version=KEYBOARD_ANALYSIS_VERSION,
             detroit_keyboard=request.detroit_keyboard.model_copy(deep=True),
             generation_notes=[
-                "Generative keyboard language only; no recording or source phrase was used."
+                "Generative keyboard language only; no recording or source phrase was used.",
+                *(
+                    [
+                        "Bill Evans Piano: form-led modern-jazz voicing, motif-aware phrasing, "
+                        "and deterministic performance shaping."
+                    ]
+                    if request.detroit_keyboard.mode == "bill_evans"
+                    else []
+                ),
             ],
         ),
     )
